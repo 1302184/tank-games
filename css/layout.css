@@ -3,7 +3,7 @@
     background: #111; border-radius: 6px;
     box-shadow: 0 0 0 2px #333, 0 30px 60px rgba(0,0,0,1), inset 0 0 20px rgba(255,255,255,0.05);
     width: 920px; 
-    min-height: 550px; /* 彻底修复排版溢出问题 */
+    min-height: 550px; 
     position: absolute; top: 0; left: 0; transform-origin: top left; z-index: 10;
 }
 
@@ -27,7 +27,7 @@
 
 #game-container { 
     box-sizing: content-box; position: relative; width: 680px; height: 440px; 
-    /* 【加分项1】校园场景图作为背景，增加深色滤镜以保证游戏可见度 */
+    /* 【加分项1】校园场景图作为背景 */
     background: linear-gradient(rgba(18, 16, 16, 0.75), rgba(18, 16, 16, 0.75)), url('../bg.jpg');
     background-size: cover; background-position: center;
     border: 8px solid #222; border-top-color: #444; border-left-color: #444; 
@@ -58,39 +58,56 @@
 #exp-fill { height: 100%; background: linear-gradient(90deg, #00FF41, #008822); width: 0%; transition: width 0.3s ease-out; }
 #exp-text { position: absolute; width: 100%; text-align: center; line-height: 16px; top: 0; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
 
-/* 【加分项专属：HUD 开发者标识】 */
+/* 【加分项3】HUD 开发者专属防伪水印 */
 .retro-dev-tag {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(10, 20, 15, 0.65);
-  border: 1px solid rgba(80, 250, 123, 0.4);
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  font-weight: bold;
-  color: #50fa7b;
-  letter-spacing: 1px;
-  text-shadow: 0 0 6px rgba(80, 250, 123, 0.6);
-  pointer-events: none;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
+  position: absolute; top: 14px; right: 18px; display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; background: rgba(10, 20, 15, 0.65); border: 1px solid rgba(80, 250, 123, 0.4);
+  border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;
+  color: #50fa7b; letter-spacing: 1px; text-shadow: 0 0 6px rgba(80, 250, 123, 0.6);
+  pointer-events: none; z-index: 9999; backdrop-filter: blur(2px);
 }
+.pulse-dot { width: 6px; height: 6px; background-color: #50fa7b; border-radius: 50%; box-shadow: 0 0 6px #50fa7b; animation: pulse-glow 1.5s infinite; }
+@keyframes pulse-glow { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
-.pulse-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #50fa7b;
-  border-radius: 50%;
-  box-shadow: 0 0 6px #50fa7b;
-  animation: pulse-glow 1.5s infinite;
+/* ========================================= */
+/* 📱 移动端屏幕适配与虚拟摇杆 (Responsive Design) */
+/* ========================================= */
+
+#mobile-controls {
+    display: none; 
+    position: absolute; bottom: 20px; left: 0; width: 100%; padding: 0 30px; 
+    box-sizing: border-box; justify-content: space-between; align-items: flex-end; 
+    z-index: 9999; pointer-events: none; 
 }
+.d-pad, .action-btns { pointer-events: auto; }
+.d-pad { position: relative; width: 140px; height: 140px; }
+.d-btn {
+    position: absolute; width: 45px; height: 45px; 
+    background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); 
+    border-radius: 8px; border-bottom: 4px solid rgba(255, 255, 255, 0.4); 
+    backdrop-filter: blur(2px); touch-action: none;
+}
+.d-btn:active { background: rgba(255, 255, 255, 0.4); border-bottom-width: 2px; transform: translateY(2px); }
+.d-btn.up { top: 0; left: 47px; }
+.d-btn.down { bottom: 0; left: 47px; }
+.d-btn.left { top: 47px; left: 0; }
+.d-btn.right { top: 47px; right: 94px; }
+.action-btns { display: flex; gap: 15px; margin-bottom: 20px;}
+.a-btn, .b-btn {
+    width: 65px; height: 65px; border-radius: 50%; 
+    background: rgba(231, 76, 60, 0.6); border: 2px solid rgba(255, 255, 255, 0.6); 
+    color: white; font-weight: 900; font-size: 16px; 
+    backdrop-filter: blur(2px); touch-action: none;
+}
+.b-btn { background: rgba(52, 152, 219, 0.6); width: 55px; height: 55px; font-size: 12px; margin-bottom: 5px;}
+.a-btn:active, .b-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.9); }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+@media (max-width: 950px) {
+    body { background: #000; overflow: hidden; }
+    #app-wrapper {
+        transform: scale(min(calc(100vw / 920), calc(100vh / 550)));
+        transform-origin: center center;
+        margin: 0; position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+    }
+    #mobile-controls { display: flex; } 
 }

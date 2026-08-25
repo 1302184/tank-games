@@ -71,6 +71,20 @@
                 <div class="buff-cards" id="buff-cards-container"></div>
             </div>
         </div>
+        
+        <!-- 【移动端适配】虚拟按键摇杆 (默认在电脑端隐藏) -->
+        <div id="mobile-controls">
+            <div class="d-pad">
+                <button class="d-btn up" data-key="KeyW"></button>
+                <button class="d-btn left" data-key="KeyA"></button>
+                <button class="d-btn right" data-key="KeyD"></button>
+                <button class="d-btn down" data-key="KeyS"></button>
+            </div>
+            <div class="action-btns">
+                <button class="a-btn" data-key="Space">FIRE</button>
+                <button class="b-btn" data-key="KeyP">暂停</button>
+            </div>
+        </div>
     </div>
 
     <!-- 严格按照依赖顺序引入拆分后的 JS -->

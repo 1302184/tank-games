@@ -36,6 +36,22 @@ class Game {
             if (e.target.closest('#screen-overlay') || e.target.closest('#level-up-modal') || e.target.closest('#ui-panel')) return;
             this.togglePause();
         });
+
+        // 【移动端适配】虚拟摇杆触摸监听
+        const touchBtns = document.querySelectorAll('#mobile-controls button');
+        touchBtns.forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                const key = btn.getAttribute('data-key');
+                if (key) { this.keys[key] = true; if (key === 'KeyP') this.togglePause(); }
+            }, { passive: false });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                const key = btn.getAttribute('data-key');
+                if (key) this.keys[key] = false;
+            }, { passive: false });
+        });
     }
 
     togglePause() {
@@ -54,7 +70,6 @@ class Game {
             this.state = 'PLAYING';
             this.showOverlay(null); 
             audioAPI.startEngine(); audioAPI.startBGM();
-            // 修复：移除多余的 requestAnimationFrame 避免速度翻倍卡死
         }
     }
     
@@ -333,7 +348,6 @@ class Game {
             return; 
         }
         
-        // 修复：加入防切屏时间爆炸保护，防止重叠卡死
         let dt = timestamp - this.lastTime; 
         if (dt > 100) dt = 16; 
         this.lastTime = timestamp;
@@ -353,9 +367,7 @@ class Game {
             if(!this.isRogue) { this.updateItems(dt); this.updateGameLogic(dt, this.p1); this.updateGameLogic(dt, this.p2); }
             
             this.flushEntities(); 
-        } catch(err) {
-            console.error("Game Loop Error:", err);
-        }
+        } catch(err) {}
         
         requestAnimationFrame((t) => this.gameLoop(t));
     }
@@ -466,7 +478,6 @@ class Game {
                     if (this.isRogue) {
                         if (w.type === CONST.MAP_TYPE.BRICK) { 
                             w.dead = true; 
-                            // 修复：防数组越界保护
                             const gridY = Math.floor(w.y/CONST.TILE_SIZE);
                             const gridX = Math.floor(w.x/CONST.TILE_SIZE);
                             if (this.spatialGrid[gridY] && this.spatialGrid[gridY][gridX] !== undefined) {
@@ -593,7 +604,6 @@ class Game {
         }
         document.getElementById('level-up-modal').classList.remove('active'); 
         this.state = 'PLAYING'; audioAPI.startEngine();
-        // 修复：移除多余的 requestAnimationFrame 避免速度翻倍
     }
 
     spawnItemClassic() {
