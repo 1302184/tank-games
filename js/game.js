@@ -37,7 +37,6 @@ class Game {
             this.togglePause();
         });
 
-        // 移动端虚拟摇杆触控监听
         const touchBtns = document.querySelectorAll('#mobile-controls button');
         touchBtns.forEach(btn => {
             btn.addEventListener('touchstart', (e) => {

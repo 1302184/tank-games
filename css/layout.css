@@ -2,8 +2,7 @@
     display: flex; gap: 20px; padding: 20px;
     background: #111; border-radius: 6px;
     box-shadow: 0 0 0 2px #333, 0 30px 60px rgba(0,0,0,1), inset 0 0 20px rgba(255,255,255,0.05);
-    width: 920px; 
-    min-height: 550px; 
+    width: 920px; min-height: 550px; 
     position: relative; margin: 20px auto; transform-origin: center center; z-index: 10;
 }
 
@@ -87,16 +86,15 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
 
 #mobile-controls { display: none; }
 
-/* 当手机竖放时：强行隐藏游戏，全屏提示旋转手机 */
+/* 竖屏：强制显示横屏提示 */
 @media (max-width: 1024px) and (orientation: portrait) {
     #app-wrapper { display: none !important; }
     #landscape-prompt { display: flex; }
 }
 
-/* 当手机横放时：游戏画面绝对居中缩放，按键钉死在两侧空白区 */
+/* 横屏：释放控制权给 JS 缩放，同时布局好摇杆 */
 @media (max-width: 1024px) and (orientation: landscape) {
     body { touch-action: none; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-    
     #landscape-prompt { display: none !important; }
     
     #app-wrapper {
@@ -104,15 +102,15 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
         top: 50% !important;
         left: 50% !important;
         margin: 0 !important;
-        /* 除以 1050 故意让画面稍微缩小一点，给两旁的大拇指留出充裕空间，防止遮挡界面 */
-        transform: translate(-50%, -50%) scale(min(calc(100vw / 1050), calc(100vh / 600))) !important;
+        /* 剥离了之前导致黑屏的 scale() 代码，这里只负责保底居中 */
+        transform: translate(-50%, -50%);
     }
     
     #mobile-controls {
         display: block !important; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
     }
     
-    .d-pad { position: absolute; bottom: 20px; left: 40px; width: 140px; height: 140px; pointer-events: auto; }
+    .d-pad { position: absolute; bottom: 30px; left: 30px; width: 140px; height: 140px; pointer-events: auto; }
     .d-btn {
         position: absolute; width: 45px; height: 45px; 
         background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); 
@@ -121,14 +119,14 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
     }
     .d-btn:active { background: rgba(255, 255, 255, 0.4); border-bottom-width: 2px; transform: translateY(2px); }
     
-    /* 彻底修复：采用绝对坐标计算法，向右键再也不会消失或重叠！ */
+    /* 精确固定四个方向键的位置 */
     .d-btn.up    { top: 0px;  left: 47px; }
     .d-btn.down  { top: 94px; left: 47px; }
     .d-btn.left  { top: 47px; left: 0px; }
-    .d-btn.right { top: 47px; left: 94px; } /* 就是这里，精准定位！ */
+    .d-btn.right { top: 47px; left: 94px; } 
 
     .action-btns {
-        position: absolute; bottom: 20px; right: 40px; display: flex; gap: 15px; align-items: flex-end; pointer-events: auto;
+        position: absolute; bottom: 30px; right: 40px; display: flex; gap: 15px; align-items: flex-end; pointer-events: auto;
     }
     .a-btn, .b-btn {
         width: 65px; height: 65px; border-radius: 50%; 
