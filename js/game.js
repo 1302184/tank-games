@@ -37,7 +37,7 @@ class Game {
             this.togglePause();
         });
 
-        // 【移动端适配】虚拟摇杆触摸监听
+        // 移动端虚拟摇杆触控监听
         const touchBtns = document.querySelectorAll('#mobile-controls button');
         touchBtns.forEach(btn => {
             btn.addEventListener('touchstart', (e) => {
@@ -46,11 +46,13 @@ class Game {
                 if (key) { this.keys[key] = true; if (key === 'KeyP') this.togglePause(); }
             }, { passive: false });
             
-            btn.addEventListener('touchend', (e) => {
+            const releaseTouch = (e) => {
                 e.preventDefault();
                 const key = btn.getAttribute('data-key');
                 if (key) this.keys[key] = false;
-            }, { passive: false });
+            };
+            btn.addEventListener('touchend', releaseTouch, { passive: false });
+            btn.addEventListener('touchcancel', releaseTouch, { passive: false });
         });
     }
 

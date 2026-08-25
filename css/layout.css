@@ -4,8 +4,10 @@
     box-shadow: 0 0 0 2px #333, 0 30px 60px rgba(0,0,0,1), inset 0 0 20px rgba(255,255,255,0.05);
     width: 920px; 
     min-height: 550px; 
-    position: absolute; top: 0; left: 0; transform-origin: top left; z-index: 10;
+    position: relative; margin: 20px auto; transform-origin: center center; z-index: 10;
 }
+
+body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
 
 #ui-panel { width: 160px; height: 100%; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; z-index: 50; }
 #ui-panel h2 { color: var(--tank-p1); text-align: center; margin: 0 0 5px 0; text-shadow: 2px 2px 0px #c0392b; font-size: 26px; font-weight: 900; letter-spacing: -1px; }
@@ -68,7 +70,7 @@
 @keyframes pulse-glow { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
 /* ========================================= */
-/* 📱 移动端屏幕横屏适配与虚拟摇杆 (完美修正版) */
+/* 📱 移动端自适应黑科技 (完美横竖屏切换) */
 /* ========================================= */
 
 #landscape-prompt {
@@ -83,56 +85,56 @@
 .phone-icon::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid #f39c12; }
 @keyframes rotate-phone { 0% { transform: rotate(0deg); } 100% { transform: rotate(-90deg); } }
 
-#mobile-controls {
-    display: none; 
-    position: fixed; bottom: 8%; left: 0; width: 100vw; padding: 0 40px; 
-    box-sizing: border-box; justify-content: space-between; align-items: flex-end; 
-    z-index: 9999; pointer-events: none; 
-}
-.d-pad, .action-btns { pointer-events: auto; }
-.d-pad { position: relative; width: 140px; height: 140px; }
-.d-btn {
-    position: absolute; width: 45px; height: 45px; 
-    background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); 
-    border-radius: 8px; border-bottom: 4px solid rgba(255, 255, 255, 0.4); 
-    backdrop-filter: blur(2px); touch-action: none;
-}
-.d-btn:active { background: rgba(255, 255, 255, 0.4); border-bottom-width: 2px; transform: translateY(2px); }
-.d-btn.up { top: 0; left: 47px; }
-.d-btn.down { bottom: 0; left: 47px; }
-.d-btn.left { top: 47px; left: 0; }
-.d-btn.right { top: 47px; right: 0; }
+#mobile-controls { display: none; }
 
-.action-btns { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 5px;}
-.small-btns { display: flex; flex-direction: column; gap: 12px; }
-.a-btn {
-    width: 75px; height: 75px; border-radius: 50%; 
-    background: rgba(231, 76, 60, 0.6); border: 2px solid rgba(255, 255, 255, 0.6); 
-    color: white; font-weight: 900; font-size: 18px; 
-    backdrop-filter: blur(2px); touch-action: none;
-}
-.b-btn, .f-btn {
-    width: 55px; height: 55px; border-radius: 50%; 
-    border: 2px solid rgba(255, 255, 255, 0.6); 
-    color: white; font-weight: bold; font-size: 13px; 
-    backdrop-filter: blur(2px); touch-action: none;
-}
-.b-btn { background: rgba(52, 152, 219, 0.6); }
-.f-btn { background: rgba(142, 68, 173, 0.6); }
-.a-btn:active, .b-btn:active, .f-btn:active { transform: scale(0.9); }
-
-@media (max-width: 950px) and (orientation: portrait) {
-    body { background: #000; overflow: hidden; margin: 0; }
+/* 当手机竖放时：强行隐藏游戏，全屏提示旋转手机 */
+@media (max-width: 1024px) and (orientation: portrait) {
     #app-wrapper { display: none !important; }
     #landscape-prompt { display: flex; }
 }
 
-@media (max-width: 950px) and (orientation: landscape) {
-    body { background: #000; overflow: hidden; margin: 0; width: 100vw; height: 100vh; }
+/* 当手机横放时：游戏画面绝对居中缩放，按键钉死在两侧空白区 */
+@media (max-width: 1024px) and (orientation: landscape) {
+    body { touch-action: none; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    
+    #landscape-prompt { display: none !important; }
+    
     #app-wrapper {
-        position: absolute; top: 50%; left: 50%; margin: 0;
-        /* 核心修复：绝对居中，并将分母扩大到 1100 和 600，强制在左右两侧留下完美的“摇杆黑边安全区” */
-        transform: translate(-50%, -50%) scale(min(calc(100vw / 1100), calc(100vh / 600)));
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        margin: 0 !important;
+        /* 除以 1050 故意让画面稍微缩小一点，给两旁的大拇指留出充裕空间，防止遮挡界面 */
+        transform: translate(-50%, -50%) scale(min(calc(100vw / 1050), calc(100vh / 600))) !important;
     }
-    #mobile-controls { display: flex; } 
+    
+    #mobile-controls {
+        display: block !important; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    }
+    
+    .d-pad { position: absolute; bottom: 20px; left: 40px; width: 140px; height: 140px; pointer-events: auto; }
+    .d-btn {
+        position: absolute; width: 45px; height: 45px; 
+        background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); 
+        border-radius: 8px; border-bottom: 4px solid rgba(255, 255, 255, 0.4); 
+        backdrop-filter: blur(2px); touch-action: none;
+    }
+    .d-btn:active { background: rgba(255, 255, 255, 0.4); border-bottom-width: 2px; transform: translateY(2px); }
+    
+    /* 彻底修复：采用绝对坐标计算法，向右键再也不会消失或重叠！ */
+    .d-btn.up    { top: 0px;  left: 47px; }
+    .d-btn.down  { top: 94px; left: 47px; }
+    .d-btn.left  { top: 47px; left: 0px; }
+    .d-btn.right { top: 47px; left: 94px; } /* 就是这里，精准定位！ */
+
+    .action-btns {
+        position: absolute; bottom: 20px; right: 40px; display: flex; gap: 15px; align-items: flex-end; pointer-events: auto;
+    }
+    .a-btn, .b-btn {
+        width: 65px; height: 65px; border-radius: 50%; 
+        background: rgba(231, 76, 60, 0.6); border: 2px solid rgba(255, 255, 255, 0.6); 
+        color: white; font-weight: 900; font-size: 16px; backdrop-filter: blur(2px); touch-action: none;
+    }
+    .b-btn { background: rgba(52, 152, 219, 0.6); width: 55px; height: 55px; font-size: 12px; margin-bottom: 5px;}
+    .a-btn:active, .b-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.9); }
 }
