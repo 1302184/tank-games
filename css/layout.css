@@ -27,7 +27,6 @@
 
 #game-container { 
     box-sizing: content-box; position: relative; width: 680px; height: 440px; 
-    /* 【加分项1】校园场景图作为背景 */
     background: linear-gradient(rgba(18, 16, 16, 0.75), rgba(18, 16, 16, 0.75)), url('../bg.jpg');
     background-size: cover; background-position: center;
     border: 8px solid #222; border-top-color: #444; border-left-color: #444; 
@@ -58,7 +57,6 @@
 #exp-fill { height: 100%; background: linear-gradient(90deg, #00FF41, #008822); width: 0%; transition: width 0.3s ease-out; }
 #exp-text { position: absolute; width: 100%; text-align: center; line-height: 16px; top: 0; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
 
-/* 【加分项3】HUD 开发者专属防伪水印 */
 .retro-dev-tag {
   position: absolute; top: 14px; right: 18px; display: flex; align-items: center; gap: 6px;
   padding: 4px 10px; background: rgba(10, 20, 15, 0.65); border: 1px solid rgba(80, 250, 123, 0.4);
@@ -70,10 +68,9 @@
 @keyframes pulse-glow { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
 /* ========================================= */
-/* 📱 移动端屏幕横屏适配与虚拟摇杆 (Responsive Design) */
+/* 📱 移动端屏幕横屏适配与虚拟摇杆 (完美修正版) */
 /* ========================================= */
 
-/* 强制竖屏提示动画特效 */
 #landscape-prompt {
     display: none; position: fixed; inset: 0; background: #0a0a0a; z-index: 10000;
     color: #f39c12; flex-direction: column; justify-content: center; align-items: center; 
@@ -86,7 +83,6 @@
 .phone-icon::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid #f39c12; }
 @keyframes rotate-phone { 0% { transform: rotate(0deg); } 100% { transform: rotate(-90deg); } }
 
-/* 移动端摇杆控件（脱离包装器，固定在屏幕最外侧两侧，绝对不会变小） */
 #mobile-controls {
     display: none; 
     position: fixed; bottom: 8%; left: 0; width: 100vw; padding: 0 40px; 
@@ -105,32 +101,38 @@
 .d-btn.up { top: 0; left: 47px; }
 .d-btn.down { bottom: 0; left: 47px; }
 .d-btn.left { top: 47px; left: 0; }
-.d-btn.right { top: 47px; right: 0; } /* 修复点：确保右键不再丢失完美贴合 */
+.d-btn.right { top: 47px; right: 0; }
 
-.action-btns { display: flex; gap: 15px; margin-bottom: 20px;}
-.a-btn, .b-btn {
-    width: 65px; height: 65px; border-radius: 50%; 
+.action-btns { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 5px;}
+.small-btns { display: flex; flex-direction: column; gap: 12px; }
+.a-btn {
+    width: 75px; height: 75px; border-radius: 50%; 
     background: rgba(231, 76, 60, 0.6); border: 2px solid rgba(255, 255, 255, 0.6); 
-    color: white; font-weight: 900; font-size: 16px; 
+    color: white; font-weight: 900; font-size: 18px; 
     backdrop-filter: blur(2px); touch-action: none;
 }
-.b-btn { background: rgba(52, 152, 219, 0.6); width: 55px; height: 55px; font-size: 12px; margin-bottom: 5px;}
-.a-btn:active, .b-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.9); }
+.b-btn, .f-btn {
+    width: 55px; height: 55px; border-radius: 50%; 
+    border: 2px solid rgba(255, 255, 255, 0.6); 
+    color: white; font-weight: bold; font-size: 13px; 
+    backdrop-filter: blur(2px); touch-action: none;
+}
+.b-btn { background: rgba(52, 152, 219, 0.6); }
+.f-btn { background: rgba(142, 68, 173, 0.6); }
+.a-btn:active, .b-btn:active, .f-btn:active { transform: scale(0.9); }
 
-/* 手机处于【竖屏模式 Portrait】时：隐藏游戏本体，显示提示请旋转手机 */
 @media (max-width: 950px) and (orientation: portrait) {
     body { background: #000; overflow: hidden; margin: 0; }
     #app-wrapper { display: none !important; }
     #landscape-prompt { display: flex; }
 }
 
-/* 手机处于【横屏模式 Landscape】时：完美等比放大，并呼出拇指摇杆 */
 @media (max-width: 950px) and (orientation: landscape) {
-    body { background: #000; overflow: hidden; margin: 0; }
+    body { background: #000; overflow: hidden; margin: 0; width: 100vw; height: 100vh; }
     #app-wrapper {
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: auto; /* 绝对居中 */
-        transform: scale(min(calc(100vw / 920), calc(100vh / 550)));
-        transform-origin: center center;
+        position: absolute; top: 50%; left: 50%; margin: 0;
+        /* 核心修复：绝对居中，并将分母扩大到 1100 和 600，强制在左右两侧留下完美的“摇杆黑边安全区” */
+        transform: translate(-50%, -50%) scale(min(calc(100vw / 1100), calc(100vh / 600)));
     }
     #mobile-controls { display: flex; } 
 }

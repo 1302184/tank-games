@@ -40,7 +40,6 @@
         </div>
 
         <div id="game-container">
-            <!-- 【加分项3】原创作者 HUD 专属标识（SJH） -->
             <div class="retro-dev-tag">
                 <span class="pulse-dot"></span>
                 <span>DEV: SJH // VER 2.0.4</span>
@@ -73,14 +72,13 @@
         </div>
     </div> <!-- app-wrapper 结束 -->
 
-    <!-- 【新增】当手机处于竖屏时，强制提示横屏游玩 -->
     <div id="landscape-prompt">
         <div class="phone-icon"></div>
         <p>为了获得最佳体验</p>
         <p>请将手机【横屏】游玩并开启旋转</p>
     </div>
 
-    <!-- 【修复】移动端适配虚拟按键摇杆，放到屏幕最外层，绝不会随游戏缩小 -->
+    <!-- 移动端适配虚拟按键摇杆 -->
     <div id="mobile-controls">
         <div class="d-pad">
             <button class="d-btn up" data-key="KeyW"></button>
@@ -89,12 +87,16 @@
             <button class="d-btn down" data-key="KeyS"></button>
         </div>
         <div class="action-btns">
+            <!-- 射击大键 -->
             <button class="a-btn" data-key="Space">FIRE</button>
-            <button class="b-btn" data-key="KeyP">暂停</button>
+            <!-- 暂停与全屏小键堆叠 -->
+            <div class="small-btns">
+                <button class="b-btn" data-key="KeyP">暂停</button>
+                <button class="f-btn" id="btn-fullscreen">全屏</button>
+            </div>
         </div>
     </div>
 
-    <!-- 严格按照依赖顺序引入拆分后的 JS -->
     <script src="./js/config.js"></script>
     <script src="./js/utils.js"></script>
     <script src="./js/audio.js"></script>
