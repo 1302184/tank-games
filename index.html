@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FC经典坦克大战 (四模式不朽街机版 + 开放世界版)</title>
-    <!-- 引入拆分后的 CSS -->
     <link rel="stylesheet" href="./css/base.css">
     <link rel="stylesheet" href="./css/layout.css">
     <link rel="stylesheet" href="./css/entities.css">
@@ -13,7 +12,6 @@
     <div id="app-wrapper">
         <div id="ui-panel">
             <h2 id="main-title" data-i18n="title">坦克大战</h2>
-            
             <div class="info-box"><p data-i18n="hiScore">HI-SCORE</p><p id="ui-highscore">0</p></div>
             <div class="info-box" id="box-score"><p data-i18n="score">SCORE</p><p id="ui-score">0</p></div>
             <div class="info-box" id="box-level"><p data-i18n="level">LEVEL</p><p id="ui-level">1</p></div>
@@ -21,43 +19,24 @@
             <div class="info-box" id="box-lives"><p data-i18n="p1Lives">P1 LIVES</p><p id="ui-lives" style="color:var(--tank-p1);">❤️❤️❤️</p></div>
             <div class="info-box hidden" id="box-p2-lives"><p data-i18n="p2Lives">P2 LIVES</p><p id="ui-p2-lives" style="color:var(--tank-p2);">❤️❤️❤️</p></div>
             <div class="info-box" id="box-enemies"><p data-i18n="enemies">ENEMIES</p><p id="ui-enemies">20</p></div>
-            
             <div class="info-box hidden" id="box-rogue-kills"><p>KILLS</p><p id="ui-rogue-kills">0</p></div>
             <div class="info-box hidden" id="box-rogue-lv"><p>ROGUE LV</p><p id="ui-rogue-lv">1</p></div>
-            
-            <div class="lang-selector">
-                <select id="lang-select">
-                    <option value="zh">中文</option><option value="en">English</option>
-                </select>
-            </div>
-
-            <div class="controls-hint">
-                <p><span>P1:</span> WASD 移 / SPACE 射</p>
-                <p id="hint-p2" class="hidden"><span>P2:</span> 方向键 移 / ENTER 射</p>
-                <p><span>左键/P键:</span> 暂停游戏</p>
-            </div>
+            <div class="lang-selector"><select id="lang-select"><option value="zh">中文</option><option value="en">English</option></select></div>
+            <div class="controls-hint"><p><span>P1:</span> WASD 移 / SPACE 射</p><p id="hint-p2" class="hidden"><span>P2:</span> 方向键 移 / ENTER 射</p><p><span>左键/P键:</span> 暂停游戏</p></div>
             <button id="btn-audio" class="btn-audio" data-i18n="audioOff">音效/BGM: 关 (按键开启)</button>
         </div>
 
         <div id="game-container">
-            <!-- 【加分项3】原创作者 HUD 专属标识（SJH） -->
-            <div class="retro-dev-tag">
-                <span class="pulse-dot"></span>
-                <span>DEV: SJH // VER 2.0.4</span>
-            </div>
-
+            <div class="retro-dev-tag"><span class="pulse-dot"></span><span>DEV: SJH // VER 2.0.4</span></div>
             <div id="game-board"></div>
-            
             <div id="minimap-container"><canvas id="minimap-canvas"></canvas></div>
             <div id="exp-container"><div id="exp-fill"></div><div id="exp-text">EXP: 0 / 100</div></div>
 
             <div id="screen-overlay" class="screen">
                 <h1 id="overlay-title" data-i18n="title">坦克大战</h1>
                 <p id="overlay-subtitle" data-i18n="arcadeEdition">MULTI-MODE EDITION</p>
-                
                 <div id="menu-buttons" class="mode-menu">
                     <button class="btn-mode resume" id="btn-resume" style="display:none;" onclick="window.gameInstance.resumeGame()">继续游戏 (RESUME)</button>
-                    
                     <button class="btn-mode" onclick="window.gameInstance.startMode('CLASSIC')" data-i18n="modeClassic">经典闯关</button>
                     <button class="btn-mode" onclick="window.gameInstance.startMode('TIME')" data-i18n="modeTime">限时模式</button>
                     <button class="btn-mode" onclick="window.gameInstance.startMode('ENDLESS')" data-i18n="modeEndless">经典无尽</button>
@@ -65,22 +44,14 @@
                     <button class="btn-mode rogue" onclick="window.gameInstance.startMode('ROGUE')">大地图生存 (肉鸽)</button>
                 </div>
             </div>
-
-            <div id="level-up-modal">
-                <h1>LEVEL UP! 选择进化路线</h1>
-                <div class="buff-cards" id="buff-cards-container"></div>
-            </div>
+            <div id="level-up-modal"><h1>LEVEL UP! 选择进化路线</h1><div class="buff-cards" id="buff-cards-container"></div></div>
         </div>
-    </div> <!-- app-wrapper 结束 -->
+    </div> 
 
-    <!-- 【新增】强制竖屏提示层 -->
-    <div id="landscape-prompt">
-        <div class="phone-icon"></div>
-        <p>为了获得最佳体验</p>
-        <p>请将手机【横屏】游玩并开启屏幕旋转</p>
-    </div>
+    <!-- 手机竖屏遮罩 -->
+    <div id="landscape-prompt"><div class="phone-icon"></div><p>为了获得最佳体验</p><p>请将手机【横屏】游玩</p></div>
 
-    <!-- 【修复】移动端虚拟按键摇杆，确保在最外层 -->
+    <!-- 手机横屏摇杆 -->
     <div id="mobile-controls">
         <div class="d-pad">
             <button class="d-btn up" data-key="KeyW"></button>
@@ -94,11 +65,41 @@
         </div>
     </div>
 
-    <!-- 严格按照依赖顺序引入拆分后的 JS -->
     <script src="./js/config.js"></script>
     <script src="./js/utils.js"></script>
     <script src="./js/audio.js"></script>
     <script src="./js/game.js"></script>
     <script src="./js/main.js"></script>
+
+    <!-- 【终极黑屏修复】最纯粹的 JS 接管，无视一切 CSS 缩放 Bug -->
+    <script>
+        function resizeMobileApp() {
+            const wrapper = document.getElementById('app-wrapper');
+            const prompt = document.getElementById('landscape-prompt');
+            const controls = document.getElementById('mobile-controls');
+            
+            if (window.innerWidth <= 1024) {
+                if (window.innerHeight > window.innerWidth) {
+                    wrapper.style.display = 'none';
+                    controls.style.display = 'none';
+                    prompt.style.display = 'flex';
+                } else {
+                    prompt.style.display = 'none';
+                    controls.style.display = 'block';
+                    wrapper.style.display = 'flex';
+                    const safeScale = Math.min(window.innerWidth / 1050, window.innerHeight / 600);
+                    document.documentElement.style.setProperty('--game-scale', safeScale);
+                }
+            } else {
+                prompt.style.display = 'none';
+                controls.style.display = 'none';
+                wrapper.style.display = 'flex';
+                document.documentElement.style.setProperty('--game-scale', 1);
+            }
+        }
+        window.addEventListener('resize', () => setTimeout(resizeMobileApp, 100));
+        window.addEventListener('orientationchange', () => setTimeout(resizeMobileApp, 100));
+        setTimeout(resizeMobileApp, 50);
+    </script>
 </body>
 </html>

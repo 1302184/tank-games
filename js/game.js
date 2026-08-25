@@ -349,22 +349,26 @@ class Game {
             return; 
         }
         
+        // 【防跳帧核心算法】：计算两帧之间的时间差并转化为速率系数，无视手机卡顿
         let dt = timestamp - this.lastTime; 
-        if (dt > 100) dt = 16; 
+        if (dt > 100) dt = 16.66; // 防止切屏回来后瞬间瞬移
         this.lastTime = timestamp;
+        const timeScale = dt / 16.666;
         
         try {
             if(this.gameMode === 'TIME') { this.timeLeft -= dt / 1000; if(this.timeLeft <= 0) { this.timeLeft = 0; this.gameOver(); } this.updateUI(); } 
             else if (this.gameMode === 'ENDLESS') { this.spawnInterval = Math.max(1000, this.spawnInterval - dt * 0.05); }
 
             let engineMoving = false;
-            if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space')) engineMoving = true;
-            if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter')) engineMoving = true;
+            // 传入 timeScale 让移动丝滑一致
+            if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', timeScale)) engineMoving = true;
+            if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', timeScale)) engineMoving = true;
             audioAPI.setEngineState(engineMoving);
             
             if (this.isRogue) { this.updateCamera(); this.updateMinimap(); }
             
-            this.updateBullets(); this.updateEnemies(dt); 
+            this.updateBullets(timeScale); 
+            this.updateEnemies(dt, timeScale); 
             if(!this.isRogue) { this.updateItems(dt); this.updateGameLogic(dt, this.p1); this.updateGameLogic(dt, this.p2); }
             
             this.flushEntities(); 
@@ -377,7 +381,7 @@ class Game {
         if(!this.p1 || this.p1.dead) return;
         this.camX = Math.max(0, Math.min(this.p1.x - 680 / 2 + CONST.TANK_SIZE / 2, this.mapW - 680));
         this.camY = Math.max(0, Math.min(this.p1.y - 440 / 2 + CONST.TANK_SIZE / 2, this.mapH - 440));
-        this.board.style.transform = `translate(${-this.camX}px, ${-this.camY}px)`;
+        this.board.style.transform = `translate(${-Math.round(this.camX)}px, ${-Math.round(this.camY)}px)`;
     }
 
     checkWallCollision(rect, isBullet) {
@@ -403,18 +407,36 @@ class Game {
     
     checkBounds(rect) { return rect.x >= 0 && rect.x + rect.w <= this.mapW && rect.y >= 0 && rect.y + rect.h <= this.mapH; }
 
-    handlePlayerInput(p, upKey, downKey, leftKey, rightKey, shootKey) {
+    handlePlayerInput(p, upKey, downKey, leftKey, rightKey, shootKey, timeScale) {
         if(!p || p.dead) return false; let dx = 0, dy = 0; let moving = false;
-        if (this.keys[upKey]) { dy = -p.speed; p.dir = CONST.DIR.UP; moving = true; }
-        else if (this.keys[downKey]) { dy = p.speed; p.dir = CONST.DIR.DOWN; moving = true; }
-        else if (this.keys[leftKey]) { dx = -p.speed; p.dir = CONST.DIR.LEFT; moving = true; }
-        else if (this.keys[rightKey]) { dx = p.speed; p.dir = CONST.DIR.RIGHT; moving = true; }
+        if (this.keys[upKey]) { dy = -p.speed * timeScale; p.dir = CONST.DIR.UP; moving = true; }
+        else if (this.keys[downKey]) { dy = p.speed * timeScale; p.dir = CONST.DIR.DOWN; moving = true; }
+        else if (this.keys[leftKey]) { dx = -p.speed * timeScale; p.dir = CONST.DIR.LEFT; moving = true; }
+        else if (this.keys[rightKey]) { dx = p.speed * timeScale; p.dir = CONST.DIR.RIGHT; moving = true; }
         
         if (moving) {
             let nextRect = { x: p.x + dx, y: p.y + dy, w: p.w, h: p.h };
             let hitOther = false; const otherP = p.id === 1 ? this.p2 : this.p1;
             if(otherP && !otherP.dead && isCollide(nextRect, otherP)) hitOther = true;
-            if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { p.x += dx; p.y += dy; }
+            
+            if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { 
+                p.x += dx; p.y += dy; 
+            } else {
+                // 【碰撞贴墙核心修复】：消除碰撞时肉眼可见的“缝隙”和顿挫感，逐像素逼近障碍物
+                let steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
+                if (steps > 0) {
+                    let stepX = dx / steps; let stepY = dy / steps;
+                    for(let i=0; i<steps; i++) {
+                        let testRect = { x: p.x + stepX, y: p.y + stepY, w: p.w, h: p.h };
+                        if (!isCollide(testRect, otherP) && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
+                            p.x += stepX; p.y += stepY;
+                        } else break;
+                    }
+                }
+                // 撞墙后强制坐标取整，避免小数点碎边闪烁
+                if (dx !== 0) p.x = Math.round(p.x);
+                if (dy !== 0) p.y = Math.round(p.y);
+            }
             this.updateTransform(p);
         }
         
@@ -435,7 +457,7 @@ class Game {
             if(isPlayer) audioAPI.playShoot();
             const el = this.pool.get('bullet', `${isPlayer ? 'bullet-p1' : ''} ${owner.pierce ? 'bullet-pierce' : ''}`);
             const b = { x: bx, y: by, w: 6, h: 6, el, dir: owner.dir, speed: CONST.BULLET_SPEED, isPlayer, dmg: owner.bulletDmg, pierce: owner.pierce, dead: false };
-            this.entities.bullets.push(b); b.el.style.transform = `translate(${bx}px, ${by}px)`;
+            this.entities.bullets.push(b); b.el.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
         };
 
         let count = 1;
@@ -461,15 +483,19 @@ class Game {
         if (isPlayer) { audioAPI.playShoot(); owner.bulletsActive++; if (owner.firePower >= 2) speed = CONST.FAST_BULLET_SPEED; if (owner.firePower >= 3) isStrong = true; }
         const el = this.pool.get('bullet', `${isPlayer ? 'bullet-p' + owner.id : ''} ${isStrong ? 'bullet-strong' : ''}`);
         const b = { x: bx, y: by, w: 6, h: 6, el, dir: owner.dir, speed, isPlayer, owner, isStrong, dead: false };
-        this.entities.bullets.push(b); b.el.style.transform = `translate(${bx}px, ${by}px)`;
+        this.entities.bullets.push(b); b.el.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
     }
 
-    updateBullets() {
+    updateBullets(timeScale) {
         for (let b of this.entities.bullets) {
             if(b.dead) continue;
-            if (b.dir === CONST.DIR.UP) b.y -= b.speed; else if (b.dir === CONST.DIR.DOWN) b.y += b.speed;
-            else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed; else if (b.dir === CONST.DIR.RIGHT) b.x += b.speed;
-            b.el.style.transform = `translate(${b.x}px, ${b.y}px)`;
+            // 子弹同样应用防跳帧系数
+            if (b.dir === CONST.DIR.UP) b.y -= b.speed * timeScale; 
+            else if (b.dir === CONST.DIR.DOWN) b.y += b.speed * timeScale;
+            else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed * timeScale; 
+            else if (b.dir === CONST.DIR.RIGHT) b.x += b.speed * timeScale;
+            
+            b.el.style.transform = `translate(${Math.round(b.x)}px, ${Math.round(b.y)}px)`;
             
             let hit = false; if (!this.checkBounds(b)) hit = true;
             
@@ -516,7 +542,7 @@ class Game {
         }
     }
 
-    updateEnemies(dt) {
+    updateEnemies(dt, timeScale) {
         if (this.isFrozen) { this.freezeTimer -= dt; if (this.freezeTimer <= 0) this.isFrozen = false; return; }
         this.enemySpawnTimer += dt;
         
@@ -534,7 +560,11 @@ class Game {
             }
 
             let dx = 0, dy = 0;
-            if (e.dir === CONST.DIR.UP) dy = -e.speed; else if (e.dir === CONST.DIR.DOWN) dy = e.speed; else if (e.dir === CONST.DIR.LEFT) dx = -e.speed; else if (e.dir === CONST.DIR.RIGHT) dx = e.speed;
+            if (e.dir === CONST.DIR.UP) dy = -e.speed * timeScale; 
+            else if (e.dir === CONST.DIR.DOWN) dy = e.speed * timeScale; 
+            else if (e.dir === CONST.DIR.LEFT) dx = -e.speed * timeScale; 
+            else if (e.dir === CONST.DIR.RIGHT) dx = e.speed * timeScale;
+            
             let nextRect = { x: e.x + dx, y: e.y + dy, w: e.w, h: e.h }; 
             e.moveTimer -= dt;
             
@@ -547,12 +577,6 @@ class Game {
                         if (Math.abs(diffX) > Math.abs(diffY)) e.dir = diffX > 0 ? CONST.DIR.RIGHT : CONST.DIR.LEFT;
                         else e.dir = diffY > 0 ? CONST.DIR.DOWN : CONST.DIR.UP;
                     } else {
-                        const dirs = [0, 90, 180, 270]; e.dir = dirs[Math.floor(Math.random() * 4)];
-                    }
-                    
-                    let testDx = 0, testDy = 0;
-                    if (e.dir === CONST.DIR.UP) testDy = -e.speed; else if (e.dir === CONST.DIR.DOWN) testDy = e.speed; else if (e.dir === CONST.DIR.LEFT) testDx = -e.speed; else if (e.dir === CONST.DIR.RIGHT) testDx = e.speed;
-                    if (this.checkWallCollision({ x: e.x + testDx, y: e.y + testDy, w: e.w, h: e.h }, false) || hitOtherEnemy) {
                         const dirs = [0, 90, 180, 270]; e.dir = dirs[Math.floor(Math.random() * 4)];
                     }
                 } else {
@@ -611,7 +635,7 @@ class Game {
         const type = CONST.ITEM_TYPES[Math.floor(Math.random() * CONST.ITEM_TYPES.length)];
         const x = Math.floor(Math.random() * ((this.mapW - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
         const y = Math.floor(Math.random() * ((this.mapH - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
-        const el = createDOM(`item ${type}`); el.style.transform = `translate(${x}px, ${y}px)`; this.board.appendChild(el);
+        const el = createDOM(`item ${type}`); el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; this.board.appendChild(el);
         this.entities.items.push({ type, x, y, w: 30, h: 30, el, timer: 10000, dead: false });
     }
 
@@ -655,7 +679,7 @@ class Game {
     }
 
     updateTransform(obj) { 
-        obj.el.style.transform = `translate(${obj.x}px, ${obj.y}px) rotate(${obj.dir}deg)`;
+        obj.el.style.transform = `translate(${Math.round(obj.x)}px, ${Math.round(obj.y)}px) rotate(${obj.dir}deg)`;
         const hpText = obj.el.querySelector('.hp-text');
         if(hpText) hpText.style.transform = `rotate(${-obj.dir}deg) scale(0.85)`;
     }
@@ -684,7 +708,7 @@ class Game {
 
     createExplosion(x, y) {
         for (let i = 0; i < 8; i++) {
-            const el = this.pool.get('particle'); el.style.left = `${x + 18}px`; el.style.top = `${y + 18}px`;
+            const el = this.pool.get('particle'); el.style.left = `${Math.round(x + 18)}px`; el.style.top = `${Math.round(y + 18)}px`;
             const angle = (Math.PI * 2 / 8) * i; const dist = this.isRogue ? 40 : 35;
             if(el.animate) { 
                 const animation = el.animate([ { transform: 'translate(0, 0) scale(1.5)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 } ], { duration: 500, easing: 'ease-out' });
