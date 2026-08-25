@@ -349,9 +349,8 @@ class Game {
             return; 
         }
         
-        // 【防跳帧核心算法】：计算两帧之间的时间差并转化为速率系数，无视手机卡顿
         let dt = timestamp - this.lastTime; 
-        if (dt > 100) dt = 16.66; // 防止切屏回来后瞬间瞬移
+        if (dt > 100) dt = 16.66; 
         this.lastTime = timestamp;
         const timeScale = dt / 16.666;
         
@@ -360,7 +359,6 @@ class Game {
             else if (this.gameMode === 'ENDLESS') { this.spawnInterval = Math.max(1000, this.spawnInterval - dt * 0.05); }
 
             let engineMoving = false;
-            // 传入 timeScale 让移动丝滑一致
             if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', timeScale)) engineMoving = true;
             if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', timeScale)) engineMoving = true;
             audioAPI.setEngineState(engineMoving);
@@ -422,7 +420,6 @@ class Game {
             if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { 
                 p.x += dx; p.y += dy; 
             } else {
-                // 【碰撞贴墙核心修复】：消除碰撞时肉眼可见的“缝隙”和顿挫感，逐像素逼近障碍物
                 let steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
                 if (steps > 0) {
                     let stepX = dx / steps; let stepY = dy / steps;
@@ -433,7 +430,6 @@ class Game {
                         } else break;
                     }
                 }
-                // 撞墙后强制坐标取整，避免小数点碎边闪烁
                 if (dx !== 0) p.x = Math.round(p.x);
                 if (dy !== 0) p.y = Math.round(p.y);
             }
@@ -489,7 +485,6 @@ class Game {
     updateBullets(timeScale) {
         for (let b of this.entities.bullets) {
             if(b.dead) continue;
-            // 子弹同样应用防跳帧系数
             if (b.dir === CONST.DIR.UP) b.y -= b.speed * timeScale; 
             else if (b.dir === CONST.DIR.DOWN) b.y += b.speed * timeScale;
             else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed * timeScale; 

@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FC经典坦克大战 (四模式不朽街机版 + 开放世界版)</title>
-    <link rel="stylesheet" href="./css/base.css">
-    <link rel="stylesheet" href="./css/layout.css">
-    <link rel="stylesheet" href="./css/entities.css">
+    <!-- 路径调整，防止读取不到样式导致纯文字 -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/entities.css">
 </head>
 <body>
     <div id="app-wrapper">
@@ -65,18 +66,20 @@
         </div>
     </div>
 
-    <script src="./js/config.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/audio.js"></script>
-    <script src="./js/game.js"></script>
-    <script src="./js/main.js"></script>
+    <!-- 路径调整 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
 
-    <!-- 【终极黑屏修复】最纯粹的 JS 接管，无视一切 CSS 缩放 Bug -->
+    <!-- 【终极防跑偏代码】强制使用 JS 渲染画面位置，无视所有手机 Bug -->
     <script>
         function resizeMobileApp() {
             const wrapper = document.getElementById('app-wrapper');
             const prompt = document.getElementById('landscape-prompt');
             const controls = document.getElementById('mobile-controls');
+            if (!wrapper) return;
             
             if (window.innerWidth <= 1024) {
                 if (window.innerHeight > window.innerWidth) {
@@ -87,19 +90,30 @@
                     prompt.style.display = 'none';
                     controls.style.display = 'block';
                     wrapper.style.display = 'flex';
+                    
                     const safeScale = Math.min(window.innerWidth / 1050, window.innerHeight / 600);
-                    document.documentElement.style.setProperty('--game-scale', safeScale);
+                    // 彻底改用 Fixed 定位，死死钉在屏幕正中心
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.top = '50%';
+                    wrapper.style.left = '50%';
+                    wrapper.style.margin = '0';
+                    wrapper.style.transform = `translate(-50%, -50%) scale(${safeScale})`;
                 }
             } else {
                 prompt.style.display = 'none';
                 controls.style.display = 'none';
                 wrapper.style.display = 'flex';
-                document.documentElement.style.setProperty('--game-scale', 1);
+                
+                wrapper.style.position = 'relative';
+                wrapper.style.top = 'auto';
+                wrapper.style.left = 'auto';
+                wrapper.style.margin = '20px auto';
+                wrapper.style.transform = 'none';
             }
         }
-        window.addEventListener('resize', () => setTimeout(resizeMobileApp, 100));
-        window.addEventListener('orientationchange', () => setTimeout(resizeMobileApp, 100));
-        setTimeout(resizeMobileApp, 50);
+        window.addEventListener('resize', resizeMobileApp);
+        window.addEventListener('orientationchange', resizeMobileApp);
+        setTimeout(resizeMobileApp, 100);
     </script>
 </body>
 </html>
