@@ -352,21 +352,21 @@ class Game {
         let dt = timestamp - this.lastTime; 
         if (dt > 100) dt = 16.66; 
         this.lastTime = timestamp;
-        const timeScale = dt / 16.666;
         
         try {
             if(this.gameMode === 'TIME') { this.timeLeft -= dt / 1000; if(this.timeLeft <= 0) { this.timeLeft = 0; this.gameOver(); } this.updateUI(); } 
             else if (this.gameMode === 'ENDLESS') { this.spawnInterval = Math.max(1000, this.spawnInterval - dt * 0.05); }
 
             let engineMoving = false;
-            if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', timeScale)) engineMoving = true;
-            if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', timeScale)) engineMoving = true;
+            // 完全恢复原速
+            if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space')) engineMoving = true;
+            if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter')) engineMoving = true;
             audioAPI.setEngineState(engineMoving);
             
             if (this.isRogue) { this.updateCamera(); this.updateMinimap(); }
             
-            this.updateBullets(timeScale); 
-            this.updateEnemies(dt, timeScale); 
+            this.updateBullets(); 
+            this.updateEnemies(dt); 
             if(!this.isRogue) { this.updateItems(dt); this.updateGameLogic(dt, this.p1); this.updateGameLogic(dt, this.p2); }
             
             this.flushEntities(); 
@@ -405,12 +405,13 @@ class Game {
     
     checkBounds(rect) { return rect.x >= 0 && rect.x + rect.w <= this.mapW && rect.y >= 0 && rect.y + rect.h <= this.mapH; }
 
-    handlePlayerInput(p, upKey, downKey, leftKey, rightKey, shootKey, timeScale) {
+    handlePlayerInput(p, upKey, downKey, leftKey, rightKey, shootKey) {
         if(!p || p.dead) return false; let dx = 0, dy = 0; let moving = false;
-        if (this.keys[upKey]) { dy = -p.speed * timeScale; p.dir = CONST.DIR.UP; moving = true; }
-        else if (this.keys[downKey]) { dy = p.speed * timeScale; p.dir = CONST.DIR.DOWN; moving = true; }
-        else if (this.keys[leftKey]) { dx = -p.speed * timeScale; p.dir = CONST.DIR.LEFT; moving = true; }
-        else if (this.keys[rightKey]) { dx = p.speed * timeScale; p.dir = CONST.DIR.RIGHT; moving = true; }
+        
+        if (this.keys[upKey]) { dy = -p.speed; p.dir = CONST.DIR.UP; moving = true; }
+        else if (this.keys[downKey]) { dy = p.speed; p.dir = CONST.DIR.DOWN; moving = true; }
+        else if (this.keys[leftKey]) { dx = -p.speed; p.dir = CONST.DIR.LEFT; moving = true; }
+        else if (this.keys[rightKey]) { dx = p.speed; p.dir = CONST.DIR.RIGHT; moving = true; }
         
         if (moving) {
             let nextRect = { x: p.x + dx, y: p.y + dy, w: p.w, h: p.h };
@@ -419,19 +420,6 @@ class Game {
             
             if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { 
                 p.x += dx; p.y += dy; 
-            } else {
-                let steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
-                if (steps > 0) {
-                    let stepX = dx / steps; let stepY = dy / steps;
-                    for(let i=0; i<steps; i++) {
-                        let testRect = { x: p.x + stepX, y: p.y + stepY, w: p.w, h: p.h };
-                        if (!isCollide(testRect, otherP) && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
-                            p.x += stepX; p.y += stepY;
-                        } else break;
-                    }
-                }
-                if (dx !== 0) p.x = Math.round(p.x);
-                if (dy !== 0) p.y = Math.round(p.y);
             }
             this.updateTransform(p);
         }
@@ -482,13 +470,13 @@ class Game {
         this.entities.bullets.push(b); b.el.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
     }
 
-    updateBullets(timeScale) {
+    updateBullets() {
         for (let b of this.entities.bullets) {
             if(b.dead) continue;
-            if (b.dir === CONST.DIR.UP) b.y -= b.speed * timeScale; 
-            else if (b.dir === CONST.DIR.DOWN) b.y += b.speed * timeScale;
-            else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed * timeScale; 
-            else if (b.dir === CONST.DIR.RIGHT) b.x += b.speed * timeScale;
+            if (b.dir === CONST.DIR.UP) b.y -= b.speed; 
+            else if (b.dir === CONST.DIR.DOWN) b.y += b.speed;
+            else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed; 
+            else if (b.dir === CONST.DIR.RIGHT) b.x += b.speed;
             
             b.el.style.transform = `translate(${Math.round(b.x)}px, ${Math.round(b.y)}px)`;
             
@@ -537,7 +525,7 @@ class Game {
         }
     }
 
-    updateEnemies(dt, timeScale) {
+    updateEnemies(dt) {
         if (this.isFrozen) { this.freezeTimer -= dt; if (this.freezeTimer <= 0) this.isFrozen = false; return; }
         this.enemySpawnTimer += dt;
         
@@ -554,31 +542,49 @@ class Game {
                 if (distToPlayer > 1200) { e.dead = true; continue; }
             }
 
+            // 【AI 跳帧/频闪核心修复】：加入转弯冷却系统
+            if (!e.turnCooldown) e.turnCooldown = 0;
+            if (e.turnCooldown > 0) e.turnCooldown -= dt;
+
             let dx = 0, dy = 0;
-            if (e.dir === CONST.DIR.UP) dy = -e.speed * timeScale; 
-            else if (e.dir === CONST.DIR.DOWN) dy = e.speed * timeScale; 
-            else if (e.dir === CONST.DIR.LEFT) dx = -e.speed * timeScale; 
-            else if (e.dir === CONST.DIR.RIGHT) dx = e.speed * timeScale;
+            if (e.dir === CONST.DIR.UP) dy = -e.speed; 
+            else if (e.dir === CONST.DIR.DOWN) dy = e.speed; 
+            else if (e.dir === CONST.DIR.LEFT) dx = -e.speed; 
+            else if (e.dir === CONST.DIR.RIGHT) dx = e.speed;
             
             let nextRect = { x: e.x + dx, y: e.y + dy, w: e.w, h: e.h }; 
             e.moveTimer -= dt;
             
             let hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other));
+            let hitObstacle = !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy;
 
-            if (e.moveTimer <= 0 || !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy) { 
-                if (this.isRogue && this.p1 && !this.p1.dead) {
-                    if (Math.random() < 0.6) { 
+            // 如果撞墙，或者到了该转弯的时间
+            if (hitObstacle || e.moveTimer <= 0) { 
+                if (e.turnCooldown <= 0) {
+                    // 设置 200ms 的转弯冷却，防止在墙角一秒钟疯狂转弯 60 次导致频闪
+                    e.turnCooldown = 200;
+                    let possibleDirs = [0, 90, 180, 270];
+
+                    if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < 0.6) { 
                         let diffX = this.p1.x - e.x; let diffY = this.p1.y - e.y;
                         if (Math.abs(diffX) > Math.abs(diffY)) e.dir = diffX > 0 ? CONST.DIR.RIGHT : CONST.DIR.LEFT;
                         else e.dir = diffY > 0 ? CONST.DIR.DOWN : CONST.DIR.UP;
                     } else {
-                        const dirs = [0, 90, 180, 270]; e.dir = dirs[Math.floor(Math.random() * 4)];
+                        // 如果因为撞墙而转弯，尽量不选当前被堵住的方向
+                        if (hitObstacle) possibleDirs = possibleDirs.filter(d => d !== e.dir);
+                        e.dir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
                     }
-                } else {
-                    const dirs = [0, 90, 180, 270]; e.dir = dirs[Math.floor(Math.random() * 4)]; 
+
+                    // 稍微靠近网格对齐，帮助 AI 顺滑驶出死角
+                    if (hitObstacle) {
+                        e.x = Math.round(e.x); e.y = Math.round(e.y);
+                    }
                 }
                 e.moveTimer = 400 + Math.random() * 1500; 
-            } else { e.x += dx; e.y += dy; }
+            } else { 
+                e.x += dx; e.y += dy; 
+            }
+            
             this.updateTransform(e);
             
             if (performance.now() - e.lastFire > e.fireCooldown) { 
