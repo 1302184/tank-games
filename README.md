@@ -8,7 +8,7 @@
 
 一个向 FC 经典《坦克大战》致敬的纯前端 Web 游戏实验项目。本项目在**零外部图片、零第三方框架、零 CDN 依赖**的前提下，通过原生 HTML/CSS/JavaScript 实现了硬核复古街机体验，并创新性地融合了现代**开放世界肉鸽（Rogue-lite）构筑割草玩法**。
 
-🔗 **在线游玩地址**：[点击进入在线演示](https://你的用户名.github.io/tank-game/tank.html) *(请将链接替换为你实际的 GitHub Pages 部署地址)*
+🔗 **在线游玩地址**：[点击进入在线演示]（https://1302184.github.io/tank-games/) *(请将链接替换为你实际的 GitHub Pages 部署地址)*
 
 ---
 
