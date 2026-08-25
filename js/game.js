@@ -24,6 +24,7 @@ class Game {
     }
     
     bindEvents() {
+        // 1. PC 键盘监听
         window.addEventListener('keydown', e => {
             if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
             this.keys[e.code] = true;
@@ -37,22 +38,89 @@ class Game {
             this.togglePause();
         });
 
-        const touchBtns = document.querySelectorAll('#mobile-controls button');
-        touchBtns.forEach(btn => {
+        // 2. 移动端：功能按键监听 (FIRE, 暂停)
+        const actionBtns = document.querySelectorAll('.action-btns button');
+        actionBtns.forEach(btn => {
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault(); 
                 const key = btn.getAttribute('data-key');
                 if (key) { this.keys[key] = true; if (key === 'KeyP') this.togglePause(); }
             }, { passive: false });
             
-            const releaseTouch = (e) => {
+            const releaseAction = (e) => {
                 e.preventDefault();
                 const key = btn.getAttribute('data-key');
                 if (key) this.keys[key] = false;
             };
-            btn.addEventListener('touchend', releaseTouch, { passive: false });
-            btn.addEventListener('touchcancel', releaseTouch, { passive: false });
+            btn.addEventListener('touchend', releaseAction, { passive: false });
+            btn.addEventListener('touchcancel', releaseAction, { passive: false });
         });
+
+        // 3. 移动端：虚拟摇杆 (Joystick) 向量计算逻辑
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickStick = document.getElementById('joystick-stick');
+        let joyActive = false;
+        let joyCX = 0, joyCY = 0;
+        const maxRadius = 35; // 摇杆帽最大滑动距离
+
+        if (joystickZone && joystickStick) {
+            const handleTouch = (e) => {
+                e.preventDefault();
+                const touch = e.targetTouches[0];
+                if (!touch) return;
+
+                if (!joyActive && e.type === 'touchstart') {
+                    joyActive = true;
+                    const rect = joystickZone.getBoundingClientRect();
+                    joyCX = rect.left + rect.width / 2;
+                    joyCY = rect.top + rect.height / 2;
+                    joystickStick.style.transition = 'none'; // 拖动时取消回弹动画
+                }
+
+                if (joyActive) {
+                    let dx = touch.clientX - joyCX;
+                    let dy = touch.clientY - joyCY;
+                    let dist = Math.hypot(dx, dy);
+
+                    // 限制摇杆的视觉范围
+                    let visualDist = Math.min(dist, maxRadius);
+                    let angle = Math.atan2(dy, dx);
+                    let stickX = Math.cos(angle) * visualDist;
+                    let stickY = Math.sin(angle) * visualDist;
+                    joystickStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+
+                    // 先清空方向
+                    this.keys['KeyW'] = false; this.keys['KeyS'] = false;
+                    this.keys['KeyA'] = false; this.keys['KeyD'] = false;
+
+                    // 摇杆死区：稍微滑动才触发（防误触）
+                    if (dist > 10) { 
+                        // 将 360 度滑动解析为最接近的四向指令 (坦克大战只支持4个方向)
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            if (dx > 0) this.keys['KeyD'] = true; // 右
+                            else this.keys['KeyA'] = true; // 左
+                        } else {
+                            if (dy > 0) this.keys['KeyS'] = true; // 下
+                            else this.keys['KeyW'] = true; // 上
+                        }
+                    }
+                }
+            };
+
+            const resetJoystick = (e) => {
+                e.preventDefault();
+                joyActive = false;
+                joystickStick.style.transition = 'transform 0.2s ease-out'; // 松手时平滑弹回中心
+                joystickStick.style.transform = `translate(-50%, -50%)`;
+                this.keys['KeyW'] = false; this.keys['KeyS'] = false;
+                this.keys['KeyA'] = false; this.keys['KeyD'] = false;
+            };
+
+            joystickZone.addEventListener('touchstart', handleTouch, { passive: false });
+            joystickZone.addEventListener('touchmove', handleTouch, { passive: false });
+            joystickZone.addEventListener('touchend', resetJoystick, { passive: false });
+            joystickZone.addEventListener('touchcancel', resetJoystick, { passive: false });
+        }
     }
 
     togglePause() {
@@ -358,7 +426,6 @@ class Game {
             else if (this.gameMode === 'ENDLESS') { this.spawnInterval = Math.max(1000, this.spawnInterval - dt * 0.05); }
 
             let engineMoving = false;
-            // 完全恢复原速
             if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space')) engineMoving = true;
             if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter')) engineMoving = true;
             audioAPI.setEngineState(engineMoving);
@@ -420,6 +487,19 @@ class Game {
             
             if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { 
                 p.x += dx; p.y += dy; 
+            } else {
+                let steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
+                if (steps > 0) {
+                    let stepX = dx / steps; let stepY = dy / steps;
+                    for(let i=0; i<steps; i++) {
+                        let testRect = { x: p.x + stepX, y: p.y + stepY, w: p.w, h: p.h };
+                        if (!isCollide(testRect, otherP) && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
+                            p.x += stepX; p.y += stepY;
+                        } else break;
+                    }
+                }
+                if (dx !== 0) p.x = Math.round(p.x);
+                if (dy !== 0) p.y = Math.round(p.y);
             }
             this.updateTransform(p);
         }
@@ -542,8 +622,7 @@ class Game {
                 if (distToPlayer > 1200) { e.dead = true; continue; }
             }
 
-            // 【AI 跳帧/频闪核心修复】：加入转弯冷却系统
-            if (!e.turnCooldown) e.turnCooldown = 0;
+            if (e.turnCooldown === undefined) e.turnCooldown = 0;
             if (e.turnCooldown > 0) e.turnCooldown -= dt;
 
             let dx = 0, dy = 0;
@@ -558,26 +637,50 @@ class Game {
             let hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other));
             let hitObstacle = !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy;
 
-            // 如果撞墙，或者到了该转弯的时间
             if (hitObstacle || e.moveTimer <= 0) { 
                 if (e.turnCooldown <= 0) {
-                    // 设置 200ms 的转弯冷却，防止在墙角一秒钟疯狂转弯 60 次导致频闪
-                    e.turnCooldown = 200;
-                    let possibleDirs = [0, 90, 180, 270];
-
-                    if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < 0.6) { 
-                        let diffX = this.p1.x - e.x; let diffY = this.p1.y - e.y;
-                        if (Math.abs(diffX) > Math.abs(diffY)) e.dir = diffX > 0 ? CONST.DIR.RIGHT : CONST.DIR.LEFT;
-                        else e.dir = diffY > 0 ? CONST.DIR.DOWN : CONST.DIR.UP;
-                    } else {
-                        // 如果因为撞墙而转弯，尽量不选当前被堵住的方向
-                        if (hitObstacle) possibleDirs = possibleDirs.filter(d => d !== e.dir);
-                        e.dir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+                    e.turnCooldown = 250; 
+                    
+                    if (hitObstacle) {
+                        e.x = Math.round(e.x / 10) * 10;
+                        e.y = Math.round(e.y / 10) * 10;
                     }
 
-                    // 稍微靠近网格对齐，帮助 AI 顺滑驶出死角
-                    if (hitObstacle) {
-                        e.x = Math.round(e.x); e.y = Math.round(e.y);
+                    let possibleDirs = [0, 90, 180, 270];
+                    let openDirs = [];
+                    for(let d of possibleDirs) {
+                        if (hitObstacle && d === e.dir) continue; 
+                        
+                        let tDx = 0, tDy = 0;
+                        if (d === 0) tDy = -e.speed * 4; 
+                        else if (d === 180) tDy = e.speed * 4; 
+                        else if (d === 270) tDx = -e.speed * 4; 
+                        else if (d === 90) tDx = e.speed * 4; 
+                        
+                        let tRect = { x: e.x + tDx, y: e.y + tDy, w: e.w, h: e.h };
+                        let hitWall = !this.checkBounds(tRect) || this.checkWallCollision(tRect, false);
+                        let hitTanks = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(tRect, other));
+                        
+                        if(!hitWall && !hitTanks) openDirs.push(d);
+                    }
+
+                    if (openDirs.length > 0) {
+                        if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < 0.5) { 
+                            let diffX = this.p1.x - e.x; let diffY = this.p1.y - e.y;
+                            let targetDir = -1;
+                            if (Math.abs(diffX) > Math.abs(diffY)) targetDir = diffX > 0 ? 90 : 270;
+                            else targetDir = diffY > 0 ? 180 : 0;
+                            
+                            if (openDirs.includes(targetDir)) {
+                                e.dir = targetDir;
+                            } else {
+                                e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
+                            }
+                        } else {
+                            e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
+                        }
+                    } else {
+                        e.dir = (e.dir + 180) % 360;
                     }
                 }
                 e.moveTimer = 400 + Math.random() * 1500; 

@@ -11,7 +11,7 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
     background: #111; border-radius: 6px;
     box-shadow: 0 0 0 2px #333, 0 30px 60px rgba(0,0,0,1), inset 0 0 20px rgba(255,255,255,0.05);
     width: 920px; min-height: 550px; 
-    position: relative; margin: 20px auto; z-index: 10;
+    position: relative; z-index: 10;
 }
 
 #ui-panel { width: 160px; height: 100%; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; z-index: 50; }
@@ -68,7 +68,7 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
 @keyframes pulse-glow { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
 /* ========================================= */
-/* 📱 移动端固定摇杆 */
+/* 📱 移动端摇杆样式 */
 /* ========================================= */
 #landscape-prompt { display: none; position: fixed; inset: 0; background: #0a0a0a; z-index: 10000; color: #f39c12; flex-direction: column; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; letter-spacing: 2px; text-align: center; }
 .phone-icon { width: 50px; height: 80px; border: 4px solid #f39c12; border-radius: 8px; margin-bottom: 20px; position: relative; animation: rotate-phone 1.5s infinite ease-in-out alternate; }
@@ -76,13 +76,26 @@ body { background: #000; display: flex; justify-content: center; align-items: ce
 @keyframes rotate-phone { 0% { transform: rotate(0deg); } 100% { transform: rotate(-90deg); } }
 
 #mobile-controls { display: none; position: fixed; inset: 0; z-index: 9999; pointer-events: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-.d-pad { position: absolute; bottom: 30px; left: 30px; width: 140px; height: 140px; pointer-events: auto; }
-.d-btn { position: absolute; width: 45px; height: 45px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 8px; border-bottom: 4px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(2px); touch-action: none; }
-.d-btn:active { background: rgba(255, 255, 255, 0.4); border-bottom-width: 2px; transform: translateY(2px); }
-.d-btn.up    { top: 0px;  left: 47px; }
-.d-btn.down  { top: 94px; left: 47px; }
-.d-btn.left  { top: 47px; left: 0px; }
-.d-btn.right { top: 47px; left: 94px; } 
+
+/* 虚拟摇杆底座 */
+#joystick-zone {
+    position: absolute; bottom: 30px; left: 40px; width: 140px; height: 140px; 
+    pointer-events: auto; touch-action: none;
+    display: flex; justify-content: center; align-items: center;
+}
+#joystick-base {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1); border: 3px solid rgba(255, 255, 255, 0.3);
+    position: relative; box-sizing: border-box; backdrop-filter: blur(2px);
+}
+/* 摇杆帽 */
+#joystick-stick {
+    width: 50px; height: 50px; background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%; position: absolute; top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.8);
+    transition: transform 0.05s ease-out; /* 让摇杆帽有轻微的回弹阻尼感 */
+}
 
 .action-btns { position: absolute; bottom: 30px; right: 40px; display: flex; gap: 15px; align-items: flex-end; pointer-events: auto; }
 .a-btn, .b-btn { width: 65px; height: 65px; border-radius: 50%; background: rgba(231, 76, 60, 0.6); border: 2px solid rgba(255, 255, 255, 0.6); color: white; font-weight: 900; font-size: 16px; backdrop-filter: blur(2px); touch-action: none; }

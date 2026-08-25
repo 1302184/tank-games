@@ -51,13 +51,12 @@
     <!-- 手机竖屏遮罩 -->
     <div id="landscape-prompt"><div class="phone-icon"></div><p>为了获得最佳体验</p><p>请将手机【横屏】游玩</p></div>
 
-    <!-- 手机横屏摇杆 -->
+    <!-- 手机横屏操作区：替换为摇杆 -->
     <div id="mobile-controls">
-        <div class="d-pad">
-            <button class="d-btn up" data-key="KeyW"></button>
-            <button class="d-btn left" data-key="KeyA"></button>
-            <button class="d-btn right" data-key="KeyD"></button>
-            <button class="d-btn down" data-key="KeyS"></button>
+        <div id="joystick-zone">
+            <div id="joystick-base">
+                <div id="joystick-stick"></div>
+            </div>
         </div>
         <div class="action-btns">
             <button class="a-btn" data-key="Space">FIRE</button>
@@ -71,7 +70,6 @@
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
 
-    <!-- 【PC端巨幕修复】根据屏幕分辨率动态放大，享受巨幕游戏 -->
     <script>
         function resizeMobileApp() {
             const wrapper = document.getElementById('app-wrapper');
@@ -79,7 +77,6 @@
             const controls = document.getElementById('mobile-controls');
             if (!wrapper) return;
             
-            // 无论PC还是移动端，都采用绝对居中
             wrapper.style.position = 'fixed';
             wrapper.style.top = '50%';
             wrapper.style.left = '50%';
@@ -94,7 +91,6 @@
                     prompt.style.display = 'none';
                     controls.style.display = 'block';
                     wrapper.style.display = 'flex';
-                    // 移动端安全缩放
                     const safeScale = Math.min(window.innerWidth / 1050, window.innerHeight / 600);
                     wrapper.style.transform = `translate(-50%, -50%) scale(${safeScale})`;
                 }
@@ -102,10 +98,8 @@
                 prompt.style.display = 'none';
                 controls.style.display = 'none';
                 wrapper.style.display = 'flex';
-                
-                // 【PC 大屏优化】：计算屏幕大小并放大游戏界面，最大支持放大 2.2 倍
-                const pcScale = Math.min((window.innerWidth * 0.85) / 920, (window.innerHeight * 0.9) / 550);
-                const finalScale = Math.max(1, Math.min(pcScale, 2.2));
+                const pcScale = Math.min((window.innerWidth * 0.95) / 920, (window.innerHeight * 0.95) / 550);
+                const finalScale = Math.max(1, Math.min(pcScale, 2.5));
                 wrapper.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
             }
         }
