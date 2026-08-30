@@ -24,13 +24,14 @@ class Game {
     }
     
     bindEvents() {
-        // 1. PC 键盘监听
         window.addEventListener('keydown', e => {
             if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
             this.keys[e.code] = true;
             if (e.code === 'KeyP') { this.togglePause(); }
         }, { passive: false });
-        window.addEventListener('keyup', e => this.keys[e.code] = false);
+        window.addEventListener('keyup', e => {
+            this.keys[e.code] = false;
+        });
 
         document.getElementById('game-container').addEventListener('mousedown', e => {
             if (e.button !== 0) return; 
@@ -38,7 +39,6 @@ class Game {
             this.togglePause();
         });
 
-        // 2. 移动端：功能按键监听 (FIRE, 暂停)
         const actionBtns = document.querySelectorAll('.action-btns button');
         actionBtns.forEach(btn => {
             btn.addEventListener('touchstart', (e) => {
@@ -56,12 +56,11 @@ class Game {
             btn.addEventListener('touchcancel', releaseAction, { passive: false });
         });
 
-        // 3. 移动端：虚拟摇杆 (Joystick) 向量计算逻辑
         const joystickZone = document.getElementById('joystick-zone');
         const joystickStick = document.getElementById('joystick-stick');
         let joyActive = false;
         let joyCX = 0, joyCY = 0;
-        const maxRadius = 35; // 摇杆帽最大滑动距离
+        const maxRadius = 35; 
 
         if (joystickZone && joystickStick) {
             const handleTouch = (e) => {
@@ -74,7 +73,7 @@ class Game {
                     const rect = joystickZone.getBoundingClientRect();
                     joyCX = rect.left + rect.width / 2;
                     joyCY = rect.top + rect.height / 2;
-                    joystickStick.style.transition = 'none'; // 拖动时取消回弹动画
+                    joystickStick.style.transition = 'none'; 
                 }
 
                 if (joyActive) {
@@ -82,26 +81,22 @@ class Game {
                     let dy = touch.clientY - joyCY;
                     let dist = Math.hypot(dx, dy);
 
-                    // 限制摇杆的视觉范围
                     let visualDist = Math.min(dist, maxRadius);
                     let angle = Math.atan2(dy, dx);
                     let stickX = Math.cos(angle) * visualDist;
                     let stickY = Math.sin(angle) * visualDist;
                     joystickStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
 
-                    // 先清空方向
                     this.keys['KeyW'] = false; this.keys['KeyS'] = false;
                     this.keys['KeyA'] = false; this.keys['KeyD'] = false;
 
-                    // 摇杆死区：稍微滑动才触发（防误触）
                     if (dist > 10) { 
-                        // 将 360 度滑动解析为最接近的四向指令 (坦克大战只支持4个方向)
                         if (Math.abs(dx) > Math.abs(dy)) {
-                            if (dx > 0) this.keys['KeyD'] = true; // 右
-                            else this.keys['KeyA'] = true; // 左
+                            if (dx > 0) this.keys['KeyD'] = true; 
+                            else this.keys['KeyA'] = true; 
                         } else {
-                            if (dy > 0) this.keys['KeyS'] = true; // 下
-                            else this.keys['KeyW'] = true; // 上
+                            if (dy > 0) this.keys['KeyS'] = true; 
+                            else this.keys['KeyW'] = true; 
                         }
                     }
                 }
@@ -110,7 +105,7 @@ class Game {
             const resetJoystick = (e) => {
                 e.preventDefault();
                 joyActive = false;
-                joystickStick.style.transition = 'transform 0.2s ease-out'; // 松手时平滑弹回中心
+                joystickStick.style.transition = 'transform 0.2s ease-out'; 
                 joystickStick.style.transform = `translate(-50%, -50%)`;
                 this.keys['KeyW'] = false; this.keys['KeyS'] = false;
                 this.keys['KeyA'] = false; this.keys['KeyD'] = false;
@@ -142,6 +137,20 @@ class Game {
         }
     }
     
+    returnToMenu() {
+        this.state = 'MENU';
+        audioAPI.stopEngine(); audioAPI.stopBGM();
+        document.getElementById('level-up-modal').classList.remove('active');
+        this.board.innerHTML = '';
+        this.pool.clearAll();
+        document.getElementById('minimap-container').style.display = 'none';
+        document.getElementById('exp-container').style.display = 'none';
+        const dict = i18nConfig[currentLang] || i18nConfig['zh'];
+        this.showOverlay(dict.title, dict.arcadeEdition, false);
+        document.getElementById('btn-resume').style.display = 'none';
+        document.getElementById('btn-menu').style.display = 'none';
+    }
+    
     showOverlay(title, subtitle = '', isPause = false) {
         const overlay = document.getElementById('screen-overlay');
         if (title) {
@@ -153,9 +162,23 @@ class Game {
             const isEnd = title === dict.gameOver || title === dict.youWin || title === dict.title || title === dict.pauseTitle;
             document.getElementById('menu-buttons').style.display = (isEnd || isPause) ? 'flex' : 'none';
             document.getElementById('btn-resume').style.display = isPause ? 'block' : 'none';
+            document.getElementById('btn-menu').style.display = (isPause || title === dict.gameOver || title === dict.youWin) ? 'block' : 'none';
         } else { 
             overlay.classList.add('hidden'); 
         }
+    }
+    
+    showBossAlert(wave) {
+        let alertEl = document.getElementById('boss-alert');
+        if(!alertEl) {
+            alertEl = document.createElement('div');
+            alertEl.id = 'boss-alert';
+            alertEl.style.cssText = 'position:fixed; top:30%; left:50%; transform:translateX(-50%); font-size:48px; font-weight:900; color:#FFD700; text-shadow:4px 4px 0 #8b0000, 0 0 20px #ff0000; z-index:9999; pointer-events:none; transition:opacity 0.5s; opacity:0; text-align:center; font-family: Impact, sans-serif;';
+            document.body.appendChild(alertEl);
+        }
+        alertEl.innerText = `⚠️ BOSS来袭！第 ${wave} 波 ⚠️`;
+        alertEl.style.opacity = 1;
+        setTimeout(() => { if(alertEl) alertEl.style.opacity = 0; }, 2000);
     }
 
     startMode(mode) {
@@ -185,7 +208,13 @@ class Game {
         this.board.style.height = `${this.mapH}px`;
         
         this.level = 1; this.score = 0; this.p1Lives = 3; this.p2Lives = mode === '2P' ? 3 : 0;
-        this.kills = 0; this.rogueLevel = 1; this.exp = 0; this.maxExp = 100;
+        
+        this.kills = 0; this.rogueLevel = 1; this.exp = 0; this.maxExp = 80; 
+        
+        this.bossCount = 0;
+        this.nextBossLevel = 5;
+        this.bossPauseTimer = 0;
+        
         this.timeLeft = mode === 'TIME' ? 90 : 0;
 
         this.enemySpawnTimer = 9999; 
@@ -310,7 +339,7 @@ class Game {
         this.minimapCtx.strokeStyle = 'rgba(255,255,255,0.4)'; this.minimapCtx.strokeRect(this.camX * this.minimapScale, this.camY * this.minimapScale, 680 * this.minimapScale, 440 * this.minimapScale);
         if(this.p1 && !this.p1.dead) { this.minimapCtx.fillStyle = '#00FF41'; this.minimapCtx.fillRect(this.p1.x * this.minimapScale, this.p1.y * this.minimapScale, 5, 5); }
         this.minimapCtx.fillStyle = '#FF3333';
-        this.entities.enemies.forEach(e => { if(!e.dead) this.minimapCtx.fillRect(e.x * this.minimapScale, e.y * this.minimapScale, 4, 4); });
+        this.entities.enemies.forEach(e => { if(!e.dead) this.minimapCtx.fillRect(e.x * this.minimapScale, e.y * this.minimapScale, e.isBoss ? 6 : 4, e.isBoss ? 6 : 4); });
     }
 
     updateHPBar(tank) {
@@ -334,7 +363,9 @@ class Game {
         
         if (this.isRogue) {
             p.x = this.mapW / 2; p.y = this.mapH / 2; 
-            p.hp = 500; p.maxHp = 500; p.bulletDmg = 20; 
+            p.hp = 500; p.maxHp = 500; 
+            p.bulletDmg = 26; 
+            
             p.fireCooldown = 600; 
             p.pierce = false; p.multiShotLevel = 0;
             p.buffLevels = { atkSpeed: 0, damage: 0, speed: 0, heal: 0, pierce: 0, multiShot: 0 };
@@ -369,6 +400,71 @@ class Game {
         return null;
     }
 
+    spawnBoss() {
+        this.bossCount++;
+        this.bossPauseTimer = 3000; 
+        this.showBossAlert(this.bossCount);
+        
+        const rogueMulti = 1 + (this.kills * 0.05);
+        const bossBaseHp = 350 + (this.bossCount * 150); 
+        const bossFinalHp = Math.floor(bossBaseHp * rogueMulti);
+        
+        const bossDmg = 25 + (this.bossCount * 5);
+        const bossSpeed = Math.min(0.8, 0.35 + (this.bossCount * 0.05));
+        const bossCooldown = Math.max(800, 2200 - (this.bossCount * 200));
+
+        let x, y, attempts = 0;
+        while(attempts < 100) {
+            let angle = Math.random() * Math.PI * 2;
+            let radius = 600 + Math.random() * 400; 
+            if(!this.p1 || this.p1.dead) { x = Math.random() * this.mapW; y = Math.random() * this.mapH; }
+            else { x = this.p1.x + Math.cos(angle) * radius; y = this.p1.y + Math.sin(angle) * radius; }
+            
+            x = Math.max(0, Math.min(x, this.mapW - 54));
+            y = Math.max(0, Math.min(y, this.mapH - 54));
+            
+            let testRect = {x, y, w: 54, h: 54};
+            let hitWall = this.checkWallCollision(testRect, false);
+            let hitEnemy = this.entities.enemies.some(e => !e.dead && isCollide(testRect, e));
+            if (!hitWall && !hitEnemy) break;
+            attempts++;
+        }
+        
+        const el = createDOM(`tank enemy-boss`); 
+        el.innerHTML = `<div class="hp-wrap boss-hp-wrap"><div class="hp-fill"></div></div><div class="body"></div><div class="turret"><div class="boss-eyes"></div><div class="boss-mark"></div></div><div class="gun"></div>`;
+        
+        const bossThemes = [
+            { c: '#FFD700', g: '#ff0000' }, 
+            { c: '#00FFFF', g: '#0000FF' }, 
+            { c: '#FF00FF', g: '#8A2BE2' }, 
+            { c: '#00FF00', g: '#32CD32' }, 
+            { c: '#FF4500', g: '#FF8C00' }, 
+            { c: '#FFFFFF', g: '#FFFFFF' }  
+        ];
+        const theme = bossThemes[Math.min(this.bossCount - 1, bossThemes.length - 1)];
+        el.style.setProperty('--boss-color', theme.c);
+        el.style.setProperty('--boss-glow', theme.g);
+
+        const enemy = { 
+            isPlayer: false, isBoss: true, x, y, w: 54, h: 54, el, 
+            dir: CONST.DIR.DOWN, speed: bossSpeed, 
+            lastFire: 0, moveTimer: 0, dead: false, 
+            lastX: x, lastY: y, stuckTimer: 0, ghostTimer: 0 
+        };
+        
+        enemy.hp = bossFinalHp; 
+        enemy.maxHp = bossFinalHp; 
+        enemy.dmg = bossDmg;
+        enemy.fireCooldown = bossCooldown;
+        enemy.multiShotLevel = 2 + Math.floor((this.bossCount - 1) / 3); 
+        enemy.pierce = true;
+        
+        const hpFill = el.querySelector('.hp-fill');
+        if(hpFill) hpFill.style.background = theme.c;
+        
+        this.updateTransform(enemy); this.entities.enemies.push(enemy); this.board.appendChild(el);
+    }
+
     spawnEnemy() {
         let x, y, typeInfo, isRed = false;
         if (this.isRogue) {
@@ -393,7 +489,7 @@ class Game {
         const el = createDOM(`tank enemy-${typeInfo.type} ${isRed ? 'enemy-red' : ''}`); 
         el.innerHTML = (this.isRogue ? `<div class="hp-wrap"><div class="hp-fill"></div></div>` : '') + `<div class="body"></div><div class="turret"></div><div class="gun"></div>`;
         
-        const enemy = { isPlayer: false, x, y, w: CONST.TANK_SIZE, h: CONST.TANK_SIZE, el, dir: CONST.DIR.DOWN, speed: typeInfo.speed, lastFire: 0, moveTimer: 0, dead: false, isRed };
+        const enemy = { isPlayer: false, x, y, w: CONST.TANK_SIZE, h: CONST.TANK_SIZE, el, dir: CONST.DIR.DOWN, speed: typeInfo.speed, lastFire: 0, moveTimer: 0, dead: false, isRed, lastX: x, lastY: y, stuckTimer: 0, ghostTimer: 0 };
         
         if (this.isRogue) {
             const hpMulti = 1 + (this.kills * 0.05); const finalHp = Math.floor(typeInfo.hp * hpMulti);
@@ -427,17 +523,25 @@ class Game {
 
             let engineMoving = false;
             if(this.handlePlayerInput(this.p1, 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space')) engineMoving = true;
+            
             if(this.gameMode === '2P' && this.handlePlayerInput(this.p2, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter')) engineMoving = true;
             audioAPI.setEngineState(engineMoving);
             
-            if (this.isRogue) { this.updateCamera(); this.updateMinimap(); }
+            if (this.isRogue) { 
+                this.updateCamera(); 
+                this.updateMinimap(); 
+                this.updateItems(dt); // 修复肉鸽模式道具拾取
+            }
             
             this.updateBullets(); 
             this.updateEnemies(dt); 
             if(!this.isRogue) { this.updateItems(dt); this.updateGameLogic(dt, this.p1); this.updateGameLogic(dt, this.p2); }
+            else { this.updateGameLogic(dt, this.p1); }
             
             this.flushEntities(); 
-        } catch(err) {}
+        } catch(err) {
+            console.error("Game loop error:", err);
+        }
         
         requestAnimationFrame((t) => this.gameLoop(t));
     }
@@ -493,7 +597,10 @@ class Game {
                     let stepX = dx / steps; let stepY = dy / steps;
                     for(let i=0; i<steps; i++) {
                         let testRect = { x: p.x + stepX, y: p.y + stepY, w: p.w, h: p.h };
-                        if (!isCollide(testRect, otherP) && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
+                        
+                        let hitOtherStep = otherP && !otherP.dead && isCollide(testRect, otherP);
+                        
+                        if (!hitOtherStep && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
                             p.x += stepX; p.y += stepY;
                         } else break;
                     }
@@ -515,12 +622,14 @@ class Game {
 
     fireBulletRogue(owner, isPlayer) {
         const spawn = (ox, oy) => {
-            let bx = owner.x + owner.w / 2 - 3 + ox; let by = owner.y + owner.h / 2 - 3 + oy;
+            let bw = owner.isBoss ? 8 : 6;
+            let bh = owner.isBoss ? 8 : 6;
+            let bx = owner.x + owner.w / 2 - bw/2 + ox; let by = owner.y + owner.h / 2 - bh/2 + oy;
             if(owner.dir === CONST.DIR.UP) by -= owner.h/2; if(owner.dir === CONST.DIR.DOWN) by += owner.h/2;
             if(owner.dir === CONST.DIR.LEFT) bx -= owner.w/2; if(owner.dir === CONST.DIR.RIGHT) bx += owner.w/2;
             if(isPlayer) audioAPI.playShoot();
-            const el = this.pool.get('bullet', `${isPlayer ? 'bullet-p1' : ''} ${owner.pierce ? 'bullet-pierce' : ''}`);
-            const b = { x: bx, y: by, w: 6, h: 6, el, dir: owner.dir, speed: CONST.BULLET_SPEED, isPlayer, dmg: owner.bulletDmg, pierce: owner.pierce, dead: false };
+            const el = this.pool.get('bullet', `${isPlayer ? 'bullet-p1' : ''} ${(owner.pierce || owner.isBoss) ? 'bullet-pierce' : ''}`);
+            const b = { x: bx, y: by, w: bw, h: bh, el, dir: owner.dir, speed: owner.isBoss ? CONST.BULLET_SPEED * 1.2 : CONST.BULLET_SPEED, isPlayer, dmg: owner.bulletDmg || owner.dmg, pierce: owner.pierce || owner.isBoss, dead: false };
             this.entities.bullets.push(b); b.el.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
         };
 
@@ -609,8 +718,12 @@ class Game {
         if (this.isFrozen) { this.freezeTimer -= dt; if (this.freezeTimer <= 0) this.isFrozen = false; return; }
         this.enemySpawnTimer += dt;
         
+        if (this.bossPauseTimer === undefined) this.bossPauseTimer = 0;
+        if (this.bossPauseTimer > 0) this.bossPauseTimer -= dt;
+        
         let interval = this.isRogue ? Math.max(1000, 2500 - this.kills * 15) : this.spawnInterval;
-        if (this.enemySpawnTimer > interval && this.entities.enemies.length < (this.isRogue ? 45 : CONST.MAX_ENEMIES) && (this.isRogue || this.enemiesToSpawn > 0)) {
+        
+        if (this.bossPauseTimer <= 0 && this.enemySpawnTimer > interval && this.entities.enemies.length < (this.isRogue ? 15 : CONST.MAX_ENEMIES) && (this.isRogue || this.enemiesToSpawn > 0)) {
             this.spawnEnemy(); this.enemySpawnTimer = 0;
         }
         
@@ -620,6 +733,24 @@ class Game {
             if (this.isRogue && this.p1 && !this.p1.dead) {
                 let distToPlayer = Math.hypot(e.x - this.p1.x, e.y - this.p1.y);
                 if (distToPlayer > 1200) { e.dead = true; continue; }
+            }
+
+            if (e.ghostTimer === undefined) e.ghostTimer = 0;
+            if (e.ghostTimer > 0) e.ghostTimer -= dt;
+            
+            if (e.lastX === undefined) { e.lastX = e.x; e.lastY = e.y; e.stuckTimer = 0; }
+            if (Math.abs(e.x - e.lastX) < 1 && Math.abs(e.y - e.lastY) < 1) {
+                e.stuckTimer += dt;
+                if (e.stuckTimer > 500) { 
+                    e.dir = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
+                    e.ghostTimer = 1000; 
+                    e.turnCooldown = 0;  
+                    e.stuckTimer = 0;
+                }
+            } else {
+                e.stuckTimer = 0;
+                e.lastX = e.x;
+                e.lastY = e.y;
             }
 
             if (e.turnCooldown === undefined) e.turnCooldown = 0;
@@ -634,38 +765,39 @@ class Game {
             let nextRect = { x: e.x + dx, y: e.y + dy, w: e.w, h: e.h }; 
             e.moveTimer -= dt;
             
-            let hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other));
+            let hitOtherEnemy = false;
+            if (e.ghostTimer <= 0) {
+                hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other) && other.ghostTimer <= 0);
+            }
             let hitObstacle = !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy;
 
             if (hitObstacle || e.moveTimer <= 0) { 
-                if (e.turnCooldown <= 0) {
-                    e.turnCooldown = 250; 
-                    
-                    if (hitObstacle) {
-                        e.x = Math.round(e.x / 10) * 10;
-                        e.y = Math.round(e.y / 10) * 10;
-                    }
-
+                if (hitObstacle || e.turnCooldown <= 0) {
                     let possibleDirs = [0, 90, 180, 270];
                     let openDirs = [];
                     for(let d of possibleDirs) {
                         if (hitObstacle && d === e.dir) continue; 
                         
                         let tDx = 0, tDy = 0;
-                        if (d === 0) tDy = -e.speed * 4; 
-                        else if (d === 180) tDy = e.speed * 4; 
-                        else if (d === 270) tDx = -e.speed * 4; 
-                        else if (d === 90) tDx = e.speed * 4; 
+                        if (d === 0) tDy = -e.speed; 
+                        else if (d === 180) tDy = e.speed; 
+                        else if (d === 270) tDx = -e.speed; 
+                        else if (d === 90) tDx = e.speed; 
                         
                         let tRect = { x: e.x + tDx, y: e.y + tDy, w: e.w, h: e.h };
                         let hitWall = !this.checkBounds(tRect) || this.checkWallCollision(tRect, false);
-                        let hitTanks = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(tRect, other));
+                        
+                        let hitTanks = false;
+                        if (e.ghostTimer <= 0) {
+                            hitTanks = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(tRect, other) && other.ghostTimer <= 0);
+                        }
                         
                         if(!hitWall && !hitTanks) openDirs.push(d);
                     }
 
                     if (openDirs.length > 0) {
-                        if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < 0.5) { 
+                        let trackChance = e.isBoss ? 0.9 : 0.5;
+                        if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < trackChance) { 
                             let diffX = this.p1.x - e.x; let diffY = this.p1.y - e.y;
                             let targetDir = -1;
                             if (Math.abs(diffX) > Math.abs(diffY)) targetDir = diffX > 0 ? 90 : 270;
@@ -679,8 +811,11 @@ class Game {
                         } else {
                             e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
                         }
+                        e.turnCooldown = 300 + Math.random() * 300; 
                     } else {
-                        e.dir = (e.dir + 180) % 360;
+                        e.dir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+                        e.ghostTimer = 1000; 
+                        e.turnCooldown = 300;
                     }
                 }
                 e.moveTimer = 400 + Math.random() * 1500; 
@@ -698,10 +833,43 @@ class Game {
         }
     }
 
+    checkLevelUpRogue() {
+        if (this.exp >= this.maxExp && this.state === 'PLAYING') {
+            this.exp -= this.maxExp;
+            this.rogueLevel++;
+            this.maxExp = Math.floor(this.maxExp * 1.25);
+            this.updateUI();
+            
+            if (this.rogueLevel === this.nextBossLevel) {
+                this.nextBossLevel += 5;
+                this.spawnBoss();
+            }
+            
+            this.triggerLevelUp();
+        }
+    }
+
     onEnemyKillRogue(e) {
         this.createExplosion(e.x, e.y); audioAPI.playExplosion();
-        this.kills++; this.exp += e.exp; this.updateUI();
-        if (this.exp >= this.maxExp) { this.exp -= this.maxExp; this.rogueLevel++; this.maxExp = Math.floor(this.maxExp * 1.5); this.updateUI(); this.triggerLevelUp(); }
+        
+        if (e.isBoss) {
+            let expGain = Math.floor(140 * Math.pow(1.2, this.bossCount - 1));
+            this.exp += expGain;
+            
+            let healPercent = Math.max(0.10, 0.30 - (this.bossCount - 1) * 0.05);
+            if (this.p1 && !this.p1.dead) {
+                this.p1.hp = Math.min(this.p1.maxHp, this.p1.hp + this.p1.maxHp * healPercent);
+                this.updateHPBar(this.p1);
+            }
+            
+            if (Math.random() < 0.5) this.spawnItemClassic(e.x, e.y);
+        } else {
+            this.kills++; 
+            this.exp += e.exp; 
+        }
+        
+        this.updateUI();
+        if (this.state === 'PLAYING') this.checkLevelUpRogue();
     }
 
     triggerLevelUp() {
@@ -725,7 +893,7 @@ class Game {
 
         switch(buffId) {
             case 'atkSpeed': p.fireCooldown = Math.max(80, p.fireCooldown * 0.8); break;
-            case 'damage': p.bulletDmg += 20; break;
+            case 'damage': p.bulletDmg += 26; break;
             case 'speed': p.speed = Math.min(2.5, p.speed + 0.2); break;
             case 'heal': p.maxHp += 100; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.5); this.updateHPBar(p); break;
             case 'pierce': p.pierce = true; if(lv > 1) { p.bulletDmg += 10; } break; 
@@ -733,12 +901,14 @@ class Game {
         }
         document.getElementById('level-up-modal').classList.remove('active'); 
         this.state = 'PLAYING'; audioAPI.startEngine();
+        
+        if (this.isRogue) this.checkLevelUpRogue();
     }
 
-    spawnItemClassic() {
+    spawnItemClassic(sx, sy) {
         const type = CONST.ITEM_TYPES[Math.floor(Math.random() * CONST.ITEM_TYPES.length)];
-        const x = Math.floor(Math.random() * ((this.mapW - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
-        const y = Math.floor(Math.random() * ((this.mapH - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
+        const x = sx !== undefined ? sx : Math.floor(Math.random() * ((this.mapW - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
+        const y = sy !== undefined ? sy : Math.floor(Math.random() * ((this.mapH - 30) / CONST.TILE_SIZE)) * CONST.TILE_SIZE;
         const el = createDOM(`item ${type}`); el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; this.board.appendChild(el);
         this.entities.items.push({ type, x, y, w: 30, h: 30, el, timer: 10000, dead: false });
     }
@@ -755,7 +925,7 @@ class Game {
         switch(type) {
             case 'star': if(player.firePower < 3) player.firePower++; player.maxBullets = player.firePower >= 2 ? 2 : 1; break;
             case 'helmet': player.isInvincible = true; player.invincibleTimer = 5000; player.el.querySelector('.invincible').style.display = 'block'; break;
-            case 'bomb': this.entities.enemies.forEach(e => { if(!e.dead){ this.createExplosion(e.x, e.y); e.dead = true; this.score += e.score; }}); audioAPI.playExplosion(); this.checkLevelClearClassic(); break;
+            case 'bomb': this.entities.enemies.forEach(e => { if(!e.dead && !e.isBoss){ this.createExplosion(e.x, e.y); e.dead = true; this.score += e.score; }}); audioAPI.playExplosion(); this.checkLevelClearClassic(); break;
             case 'clock': this.isFrozen = true; this.freezeTimer = 8000; break;
             case 'tank': if(player.id === 1) this.p1Lives++; else this.p2Lives++; break;
             case 'shovel': const bW = this.entities.walls.filter(w=>w.isBaseWall); bW.forEach(w=>w.type=CONST.MAP_TYPE.STEEL); bW.forEach(w=>w.el.className='game-obj steel'); setTimeout(() => { bW.forEach(w=>w.type=CONST.MAP_TYPE.BRICK); bW.forEach(w=>w.el.className='game-obj brick'); }, 15000); break;
@@ -784,8 +954,16 @@ class Game {
 
     updateTransform(obj) { 
         obj.el.style.transform = `translate(${Math.round(obj.x)}px, ${Math.round(obj.y)}px) rotate(${obj.dir}deg)`;
-        const hpText = obj.el.querySelector('.hp-text');
-        if(hpText) hpText.style.transform = `rotate(${-obj.dir}deg) scale(0.85)`;
+        const hpWrap = obj.el.querySelector('.hp-wrap');
+        if(hpWrap) {
+            let yOffset = obj.isBoss ? 40 : 30;
+            hpWrap.style.transform = `rotate(${-obj.dir}deg) translate(0px, ${yOffset}px)`;
+            const hpText = hpWrap.querySelector('.hp-text');
+            if(hpText) hpText.style.transform = 'scale(0.85)';
+        } else {
+            const hpText = obj.el.querySelector('.hp-text');
+            if(hpText) hpText.style.transform = `rotate(${-obj.dir}deg) scale(0.85)`;
+        }
     }
     
     flushEntities() {
@@ -806,7 +984,7 @@ class Game {
         } else {
             if(this.base && !this.base.destroyed) { this.base.destroyed = true; this.base.el.classList.add('destroyed'); }
             if (this.score > this.highScoreClassic) { this.highScoreClassic = this.score; try { localStorage.setItem('tank_highscore', this.highScoreClassic); } catch(e){} }
-            const dict = i18nConfig[currentLang] || i18nConfig['zh']; setTimeout(() => this.showOverlay(dict.gameOver, `${dict.score}: ${this.score}`), 1500);
+            const dict = i18nConfig[currentLang] || i18nConfig['zh']; setTimeout => this.showOverlay(dict.gameOver, `${dict.score}: ${this.score}`), 1500;
         }
     }
 

@@ -19,10 +19,15 @@
             <div class="info-box" id="box-lives"><p data-i18n="p1Lives">P1 LIVES</p><p id="ui-lives" style="color:var(--tank-p1);">❤️❤️❤️</p></div>
             <div class="info-box hidden" id="box-p2-lives"><p data-i18n="p2Lives">P2 LIVES</p><p id="ui-p2-lives" style="color:var(--tank-p2);">❤️❤️❤️</p></div>
             <div class="info-box" id="box-enemies"><p data-i18n="enemies">ENEMIES</p><p id="ui-enemies">20</p></div>
-            <div class="info-box hidden" id="box-rogue-kills"><p>KILLS</p><p id="ui-rogue-kills">0</p></div>
-            <div class="info-box hidden" id="box-rogue-lv"><p>ROGUE LV</p><p id="ui-rogue-lv">1</p></div>
+            <div class="info-box hidden" id="box-rogue-kills"><p data-i18n="rogueKills">KILLS</p><p id="ui-rogue-kills">0</p></div>
+            <div class="info-box hidden" id="box-rogue-lv"><p data-i18n="rogueLv">ROGUE LV</p><p id="ui-rogue-lv">1</p></div>
             <div class="lang-selector"><select id="lang-select"><option value="zh">中文</option><option value="en">English</option></select></div>
-            <div class="controls-hint"><p><span>P1:</span> WASD 移 / SPACE 射</p><p id="hint-p2" class="hidden"><span>P2:</span> 方向键 移 / ENTER 射</p><p><span>左键/P键:</span> 暂停游戏</p></div>
+            <div class="controls-hint">
+                <p><span>P1:</span> WASD 移 / SPACE 射</p>
+                <p id="hint-p2"><span>P2:</span> 方向键 移 / ENTER 射</p>
+                <p><span data-i18n="buffHint">升级:</span> 鼠标点击卡片选择</p>
+                <p><span data-i18n="pauseHint">左键/P:</span> 暂停游戏</p>
+            </div>
             <button id="btn-audio" class="btn-audio" data-i18n="audioOff">音效/BGM: 关 (按键开启)</button>
         </div>
 
@@ -37,21 +42,20 @@
                 <p id="overlay-subtitle" data-i18n="arcadeEdition">MULTI-MODE EDITION</p>
                 <div id="menu-buttons" class="mode-menu">
                     <button class="btn-mode resume" id="btn-resume" style="display:none;" onclick="window.gameInstance.resumeGame()">继续游戏 (RESUME)</button>
+                    <button class="btn-mode resume" id="btn-menu" style="display:none;" onclick="window.gameInstance.returnToMenu()" data-i18n="returnMenu">返回主菜单 (MENU)</button>
                     <button class="btn-mode" onclick="window.gameInstance.startMode('CLASSIC')" data-i18n="modeClassic">经典闯关</button>
                     <button class="btn-mode" onclick="window.gameInstance.startMode('TIME')" data-i18n="modeTime">限时模式</button>
                     <button class="btn-mode" onclick="window.gameInstance.startMode('ENDLESS')" data-i18n="modeEndless">经典无尽</button>
                     <button class="btn-mode p2" onclick="window.gameInstance.startMode('2P')" data-i18n="mode2P">双人对战</button>
-                    <button class="btn-mode rogue" onclick="window.gameInstance.startMode('ROGUE')">大地图生存 (肉鸽)</button>
+                    <button class="btn-mode rogue" onclick="window.gameInstance.startMode('ROGUE')" data-i18n="modeRogue">大地图生存 (肉鸽)</button>
                 </div>
             </div>
-            <div id="level-up-modal"><h1>LEVEL UP! 选择进化路线</h1><div class="buff-cards" id="buff-cards-container"></div></div>
+            <div id="level-up-modal"><h1 data-i18n="levelUpTitle">LEVEL UP! 选择进化路线</h1><div class="buff-cards" id="buff-cards-container"></div></div>
         </div>
     </div> 
 
-    <!-- 手机竖屏遮罩 -->
     <div id="landscape-prompt"><div class="phone-icon"></div><p>为了获得最佳体验</p><p>请将手机【横屏】游玩</p></div>
 
-    <!-- 手机横屏操作区：替换为摇杆 -->
     <div id="mobile-controls">
         <div id="joystick-zone">
             <div id="joystick-base">
@@ -76,28 +80,20 @@
             const prompt = document.getElementById('landscape-prompt');
             const controls = document.getElementById('mobile-controls');
             if (!wrapper) return;
-            
             wrapper.style.position = 'fixed';
             wrapper.style.top = '50%';
             wrapper.style.left = '50%';
             wrapper.style.margin = '0';
-            
             if (window.innerWidth <= 1024) {
                 if (window.innerHeight > window.innerWidth) {
-                    wrapper.style.display = 'none';
-                    controls.style.display = 'none';
-                    prompt.style.display = 'flex';
+                    wrapper.style.display = 'none'; controls.style.display = 'none'; prompt.style.display = 'flex';
                 } else {
-                    prompt.style.display = 'none';
-                    controls.style.display = 'block';
-                    wrapper.style.display = 'flex';
+                    prompt.style.display = 'none'; controls.style.display = 'block'; wrapper.style.display = 'flex';
                     const safeScale = Math.min(window.innerWidth / 1050, window.innerHeight / 600);
                     wrapper.style.transform = `translate(-50%, -50%) scale(${safeScale})`;
                 }
             } else {
-                prompt.style.display = 'none';
-                controls.style.display = 'none';
-                wrapper.style.display = 'flex';
+                prompt.style.display = 'none'; controls.style.display = 'none'; wrapper.style.display = 'flex';
                 const pcScale = Math.min((window.innerWidth * 0.95) / 920, (window.innerHeight * 0.95) / 550);
                 const finalScale = Math.max(1, Math.min(pcScale, 2.5));
                 wrapper.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
