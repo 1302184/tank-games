@@ -28,7 +28,12 @@ class Game {
             if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
             this.keys[e.code] = true;
             if (e.code === 'KeyP') { this.togglePause(); }
+            
+            if (e.code === 'Escape' && (this.state === 'PAUSED' || this.state === 'GAMEOVER')) {
+                this.returnToMenu();
+            }
         }, { passive: false });
+        
         window.addEventListener('keyup', e => {
             this.keys[e.code] = false;
         });
@@ -161,8 +166,17 @@ class Game {
             
             const isEnd = title === dict.gameOver || title === dict.youWin || title === dict.title || title === dict.pauseTitle;
             document.getElementById('menu-buttons').style.display = (isEnd || isPause) ? 'flex' : 'none';
+            
+            const isMainMenu = (title === dict.title);
+            
             document.getElementById('btn-resume').style.display = isPause ? 'block' : 'none';
             document.getElementById('btn-menu').style.display = (isPause || title === dict.gameOver || title === dict.youWin) ? 'block' : 'none';
+            
+            const modeBtns = document.querySelectorAll('#menu-buttons .btn-mode:not(#btn-resume):not(#btn-menu)');
+            modeBtns.forEach(btn => {
+                btn.style.display = isMainMenu ? 'block' : 'none';
+            });
+            
         } else { 
             overlay.classList.add('hidden'); 
         }
@@ -220,8 +234,8 @@ class Game {
         this.enemySpawnTimer = 9999; 
         this.isFrozen = false; 
         this.freezeTimer = 0;
-        this.enemiesToSpawn = this.isRogue ? 9999 : 20; 
-        this.spawnInterval = this.isRogue ? 4500 : 3500; 
+        
+        this.spawnInterval = this.isRogue ? 4500 : 3850; 
         
         this.loadLevel(); 
     }
@@ -241,9 +255,9 @@ class Game {
             this.spawnPlayer(1);
             this.updateUI();
         } else {
-            if(this.gameMode === 'ENDLESS') { this.enemiesToSpawn = 9999; this.spawnInterval = 3500; } 
-            else if(this.gameMode === 'TIME') { this.enemiesToSpawn = 10 + this.level * 5; this.spawnInterval = 3000; } 
-            else { this.enemiesToSpawn = 15 + this.level * 5; this.spawnInterval = 3500; }
+            if(this.gameMode === 'ENDLESS') { this.enemiesToSpawn = 9999; this.spawnInterval = 3850; } 
+            else if(this.gameMode === 'TIME') { this.enemiesToSpawn = 10 + this.level * 5; this.spawnInterval = 3300; } 
+            else { this.enemiesToSpawn = 15 + this.level * 5; this.spawnInterval = 3850; }
             this.showOverlay(this.gameMode === 'ENDLESS' ? dict.modeEndless : `${dict.level} ${this.level}`);
             this.buildMapClassic(); 
             this.spawnPlayer(1);
@@ -497,7 +511,8 @@ class Game {
             enemy.fireCooldown = 2000 + Math.random()*2500;
             this.updateHPBar(enemy);
         } else {
-            enemy.hp = typeInfo.hp; enemy.score = typeInfo.score; enemy.fireCooldown = 800 + Math.random()*1500;
+            enemy.hp = typeInfo.hp; enemy.score = typeInfo.score; 
+            enemy.fireCooldown = 920 + Math.random()*1725;
             this.enemiesToSpawn--; this.updateUI();
         }
 
@@ -530,7 +545,7 @@ class Game {
             if (this.isRogue) { 
                 this.updateCamera(); 
                 this.updateMinimap(); 
-                this.updateItems(dt); // 修复肉鸽模式道具拾取
+                this.updateItems(dt); 
             }
             
             this.updateBullets(); 
@@ -587,9 +602,15 @@ class Game {
         if (moving) {
             let nextRect = { x: p.x + dx, y: p.y + dy, w: p.w, h: p.h };
             let hitOther = false; const otherP = p.id === 1 ? this.p2 : this.p1;
-            if(otherP && !otherP.dead && isCollide(nextRect, otherP)) hitOther = true;
             
-            if (!hitOther && !this.checkWallCollision(nextRect, false) && this.checkBounds(nextRect)) { 
+            // [修复] 玩家移动防堆叠：不仅检测与另一个玩家的碰撞，也必须检测与敌方坦克的碰撞
+            if(otherP && !otherP.dead && isCollide(nextRect, otherP) && !isCollide(p, otherP)) hitOther = true;
+            let hitEnemy = this.entities.enemies.some(e => !e.dead && isCollide(nextRect, e) && !isCollide(p, e));
+            
+            let shrink = p.isInvincible ? 4 : 2;
+            let wallHitRect = { x: nextRect.x + shrink, y: nextRect.y + shrink, w: nextRect.w - shrink * 2, h: nextRect.h - shrink * 2 };
+            
+            if (!hitOther && !hitEnemy && !this.checkWallCollision(wallHitRect, false) && this.checkBounds(nextRect)) { 
                 p.x += dx; p.y += dy; 
             } else {
                 let steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
@@ -597,10 +618,12 @@ class Game {
                     let stepX = dx / steps; let stepY = dy / steps;
                     for(let i=0; i<steps; i++) {
                         let testRect = { x: p.x + stepX, y: p.y + stepY, w: p.w, h: p.h };
+                        let testWallHitRect = { x: testRect.x + shrink, y: testRect.y + shrink, w: testRect.w - shrink * 2, h: testRect.h - shrink * 2 };
                         
-                        let hitOtherStep = otherP && !otherP.dead && isCollide(testRect, otherP);
+                        let hitOtherStep = otherP && !otherP.dead && isCollide(testRect, otherP) && !isCollide(p, otherP);
+                        let hitEnemyStep = this.entities.enemies.some(e => !e.dead && isCollide(testRect, e) && !isCollide(p, e));
                         
-                        if (!hitOtherStep && !this.checkWallCollision(testRect, false) && this.checkBounds(testRect)) {
+                        if (!hitOtherStep && !hitEnemyStep && !this.checkWallCollision(testWallHitRect, false) && this.checkBounds(testRect)) {
                             p.x += stepX; p.y += stepY;
                         } else break;
                     }
@@ -662,16 +685,23 @@ class Game {
     updateBullets() {
         for (let b of this.entities.bullets) {
             if(b.dead) continue;
-            if (b.dir === CONST.DIR.UP) b.y -= b.speed; 
-            else if (b.dir === CONST.DIR.DOWN) b.y += b.speed;
-            else if (b.dir === CONST.DIR.LEFT) b.x -= b.speed; 
-            else if (b.dir === CONST.DIR.RIGHT) b.x += b.speed;
             
-            b.el.style.transform = `translate(${Math.round(b.x)}px, ${Math.round(b.y)}px)`;
+            let steps = Math.ceil(b.speed / 2);
+            let stepX = 0, stepY = 0;
+            if (b.dir === CONST.DIR.UP) stepY = -b.speed / steps;
+            else if (b.dir === CONST.DIR.DOWN) stepY = b.speed / steps;
+            else if (b.dir === CONST.DIR.LEFT) stepX = -b.speed / steps;
+            else if (b.dir === CONST.DIR.RIGHT) stepX = b.speed / steps;
             
-            let hit = false; if (!this.checkBounds(b)) hit = true;
-            
-            if (!hit) {
+            let hit = false;
+            for(let s = 0; s < steps; s++) {
+                b.x += stepX;
+                b.y += stepY;
+                
+                b.el.style.transform = `translate(${Math.round(b.x)}px, ${Math.round(b.y)}px)`;
+                
+                if (!this.checkBounds(b)) { hit = true; break; }
+                
                 let w = this.checkWallCollision(b, true);
                 if (w) {
                     if (this.isRogue) {
@@ -687,29 +717,49 @@ class Game {
                     } else {
                         hit = true; if (w === this.base) this.gameOver(); else if (w.type === CONST.MAP_TYPE.BRICK || (w.type === CONST.MAP_TYPE.STEEL && b.isStrong)) w.dead = true; 
                     }
+                    if(hit) break;
                 }
-            }
-            
-            if (!hit) {
-                if (b.isPlayer) {
-                    for (let e of this.entities.enemies) {
-                        if (!e.dead && isCollide(b, e)) {
-                            hit = true; 
-                            if (this.isRogue) { e.hp -= b.dmg; if(e.hp <= 0) { e.dead = true; this.onEnemyKillRogue(e); } else this.updateHPBar(e); }
-                            else { e.hp--; if(e.hp <= 0) { e.dead = true; this.score += e.score; if(e.isRed) this.spawnItemClassic(); this.createExplosion(e.x, e.y); audioAPI.playExplosion(); this.updateUI(); this.checkLevelClearClassic(); } }
-                            break;
+                
+                if (!hit) {
+                    if (b.isPlayer) {
+                        for (let e of this.entities.enemies) {
+                            let eHitBox = { x: e.x - 2, y: e.y - 2, w: e.w + 4, h: e.h + 4 };
+                            if (!e.dead && isCollide(b, eHitBox)) {
+                                hit = true; 
+                                if (this.isRogue) { e.hp -= b.dmg; if(e.hp <= 0) { e.dead = true; this.onEnemyKillRogue(e); } else this.updateHPBar(e); }
+                                else { e.hp--; if(e.hp <= 0) { e.dead = true; this.score += e.score; if(e.isRed) this.spawnItemClassic(); this.createExplosion(e.x, e.y); audioAPI.playExplosion(); this.updateUI(); this.checkLevelClearClassic(); } }
+                                break;
+                            }
+                        }
+                        if(!hit && !this.isRogue && this.gameMode === '2P') { 
+                            const targetP = b.owner.id === 1 ? this.p2 : this.p1; 
+                            if(targetP && !targetP.dead && isCollide(b, targetP) && !targetP.isInvincible) { hit = true; this.killPlayerClassic(targetP.id); break; } 
+                        }
+                    } else {
+                        let p1HitBox = this.p1 ? { x: this.p1.x - 2, y: this.p1.y - 2, w: this.p1.w + 4, h: this.p1.h + 4 } : null;
+                        if (this.isRogue) { 
+                            if(this.p1 && !this.p1.dead && isCollide(b, p1HitBox)) { hit = true; this.p1.hp -= b.dmg; this.updateHPBar(this.p1); if(this.p1.hp <= 0) this.gameOver(); break; } 
+                        } else { 
+                            if (this.p1 && !this.p1.dead && isCollide(b, p1HitBox) && !this.p1.isInvincible) { hit = true; this.killPlayerClassic(1); break; } 
+                            
+                            let p2HitBox = this.p2 ? { x: this.p2.x - 2, y: this.p2.y - 2, w: this.p2.w + 4, h: this.p2.h + 4 } : null;
+                            if (!hit && this.p2 && !this.p2.dead && isCollide(b, p2HitBox) && !this.p2.isInvincible) { hit = true; this.killPlayerClassic(2); break; } 
                         }
                     }
-                    if(!hit && !this.isRogue && this.gameMode === '2P') { const targetP = b.owner.id === 1 ? this.p2 : this.p1; if(targetP && !targetP.dead && isCollide(b, targetP) && !targetP.isInvincible) { hit = true; this.killPlayerClassic(targetP.id); } }
-                } else {
-                    if (this.isRogue) { if(this.p1 && !this.p1.dead && isCollide(b, this.p1)) { hit = true; this.p1.hp -= b.dmg; this.updateHPBar(this.p1); if(this.p1.hp <= 0) this.gameOver(); } }
-                    else { if (this.p1 && !this.p1.dead && isCollide(b, this.p1) && !this.p1.isInvincible) { hit = true; this.killPlayerClassic(1); } if (!hit && this.p2 && !this.p2.dead && isCollide(b, this.p2) && !this.p2.isInvincible) { hit = true; this.killPlayerClassic(2); } }
                 }
+                
+                if (!hit) {
+                    for (let other of this.entities.bullets) { 
+                        if (b !== other && !other.dead && b.isPlayer !== other.isPlayer && isCollide(b, other)) { 
+                            hit = true; other.dead = true; 
+                            if(!this.isRogue && other.isPlayer) other.owner.bulletsActive--; 
+                            break; 
+                        } 
+                    }
+                }
+                if(hit) break;
             }
             
-            if (!hit) {
-                for (let other of this.entities.bullets) { if (b !== other && !other.dead && b.isPlayer !== other.isPlayer && isCollide(b, other)) { hit = true; other.dead = true; if(!this.isRogue && other.isPlayer) other.owner.bulletsActive--; break; } }
-            }
             if (hit) { b.dead = true; if (!this.isRogue && b.isPlayer) b.owner.bulletsActive--; }
         }
     }
@@ -734,6 +784,10 @@ class Game {
                 let distToPlayer = Math.hypot(e.x - this.p1.x, e.y - this.p1.y);
                 if (distToPlayer > 1200) { e.dead = true; continue; }
             }
+
+            // [修复2] 防止死锁集群：如果敌方坦克目前正与其他坦克物理重叠，强制赋予极短的幽灵滑行时间使其错开
+            let currentlyOverlappingEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(e, other));
+            if (currentlyOverlappingEnemy) e.ghostTimer = 200;
 
             if (e.ghostTimer === undefined) e.ghostTimer = 0;
             if (e.ghostTimer > 0) e.ghostTimer -= dt;
@@ -766,10 +820,20 @@ class Game {
             e.moveTimer -= dt;
             
             let hitOtherEnemy = false;
+            let p1HitBox = this.p1 && !this.p1.dead ? { x: this.p1.x, y: this.p1.y, w: this.p1.w, h: this.p1.h } : null;
+            let p2HitBox = this.p2 && !this.p2.dead ? { x: this.p2.x, y: this.p2.y, w: this.p2.w, h: this.p2.h } : null;
+            
             if (e.ghostTimer <= 0) {
-                hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other) && other.ghostTimer <= 0);
+                // [修复2] 在发生碰撞检测时，只阻止靠近，不阻止分离(允许被挤压的坦克自行脱出)
+                hitOtherEnemy = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(nextRect, other) && other.ghostTimer <= 0 && !isCollide(e, other));
             }
-            let hitObstacle = !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy;
+            
+            // 同理，如果敌军已经挤进玩家的碰撞盒（或反之），不要锁死方向，允许其朝外侧撤离
+            let hitPlayer = false;
+            if (p1HitBox && isCollide(nextRect, p1HitBox) && !isCollide(e, p1HitBox)) hitPlayer = true;
+            if (p2HitBox && isCollide(nextRect, p2HitBox) && !isCollide(e, p2HitBox)) hitPlayer = true;
+            
+            let hitObstacle = !this.checkBounds(nextRect) || this.checkWallCollision(nextRect, false) || hitOtherEnemy || hitPlayer;
 
             if (hitObstacle || e.moveTimer <= 0) { 
                 if (hitObstacle || e.turnCooldown <= 0) {
@@ -789,24 +853,53 @@ class Game {
                         
                         let hitTanks = false;
                         if (e.ghostTimer <= 0) {
-                            hitTanks = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(tRect, other) && other.ghostTimer <= 0);
+                            hitTanks = this.entities.enemies.some(other => other !== e && !other.dead && isCollide(tRect, other) && other.ghostTimer <= 0 && !isCollide(e, other));
                         }
                         
-                        if(!hitWall && !hitTanks) openDirs.push(d);
+                        let hitPlayerAhead = false;
+                        if (p1HitBox && isCollide(tRect, p1HitBox) && !isCollide(e, p1HitBox)) hitPlayerAhead = true;
+                        if (p2HitBox && isCollide(tRect, p2HitBox) && !isCollide(e, p2HitBox)) hitPlayerAhead = true;
+                        
+                        if(!hitWall && !hitTanks && !hitPlayerAhead) openDirs.push(d);
                     }
 
                     if (openDirs.length > 0) {
-                        let trackChance = e.isBoss ? 0.9 : 0.5;
-                        if (this.isRogue && this.p1 && !this.p1.dead && Math.random() < trackChance) { 
-                            let diffX = this.p1.x - e.x; let diffY = this.p1.y - e.y;
+                        let p = this.p1;
+                        if (this.p2 && !this.p2.dead && p && !p.dead) {
+                            let d1 = Math.hypot(e.x - p.x, e.y - p.y);
+                            let d2 = Math.hypot(e.x - this.p2.x, e.y - this.p2.y);
+                            if (d2 < d1) p = this.p2;
+                        } else if (!p || p.dead) {
+                            p = this.p2 && !this.p2.dead ? this.p2 : null;
+                        }
+                        
+                        let trackChance = e.isBoss ? 0.9 : 0.65;
+                        if (p && Math.random() < trackChance) { 
+                            let diffX = p.x - e.x; let diffY = p.y - e.y;
+                            let dist = Math.hypot(diffX, diffY);
                             let targetDir = -1;
-                            if (Math.abs(diffX) > Math.abs(diffY)) targetDir = diffX > 0 ? 90 : 270;
-                            else targetDir = diffY > 0 ? 180 : 0;
+                            
+                            if (dist > CONST.TANK_SIZE * 5) {
+                                if (Math.abs(diffX) > Math.abs(diffY)) targetDir = diffX > 0 ? 90 : 270;
+                                else targetDir = diffY > 0 ? 180 : 0;
+                            } else {
+                                if (Math.random() < 0.5) {
+                                    if (Math.abs(diffX) > Math.abs(diffY)) targetDir = diffX > 0 ? 90 : 270;
+                                    else targetDir = diffY > 0 ? 180 : 0;
+                                } else {
+                                    targetDir = openDirs[Math.floor(Math.random() * openDirs.length)];
+                                }
+                            }
                             
                             if (openDirs.includes(targetDir)) {
                                 e.dir = targetDir;
                             } else {
-                                e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
+                                let secDir = -1;
+                                if (targetDir === 90 || targetDir === 270) secDir = diffY > 0 ? 180 : 0;
+                                else secDir = diffX > 0 ? 90 : 270;
+                                
+                                if (openDirs.includes(secDir)) e.dir = secDir;
+                                else e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
                             }
                         } else {
                             e.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
@@ -826,6 +919,26 @@ class Game {
             this.updateTransform(e);
             
             if (performance.now() - e.lastFire > e.fireCooldown) { 
+                let p = this.p1;
+                if (this.p2 && !this.p2.dead && p && !p.dead) {
+                    let d1 = Math.hypot(e.x - p.x, e.y - p.y);
+                    let d2 = Math.hypot(e.x - this.p2.x, e.y - this.p2.y);
+                    if (d2 < d1) p = this.p2;
+                } else if (!p || p.dead) {
+                    p = this.p2 && !this.p2.dead ? this.p2 : null;
+                }
+
+                if (p && Math.random() < 0.75) {
+                    let diffX = p.x - e.x;
+                    let diffY = p.y - e.y;
+                    let dist = Math.hypot(diffX, diffY);
+                    if (Math.abs(diffX) < CONST.TANK_SIZE && dist < 600) {
+                        e.dir = diffY > 0 ? 180 : 0;
+                    } else if (Math.abs(diffY) < CONST.TANK_SIZE && dist < 600) {
+                        e.dir = diffX > 0 ? 90 : 270;
+                    }
+                }
+
                 if(this.isRogue) this.fireBulletRogue(e, false); 
                 else this.fireBulletClassic(e, false); 
                 e.lastFire = performance.now(); 
@@ -853,7 +966,7 @@ class Game {
         this.createExplosion(e.x, e.y); audioAPI.playExplosion();
         
         if (e.isBoss) {
-            let expGain = Math.floor(140 * Math.pow(1.2, this.bossCount - 1));
+            let expGain = Math.floor(250 * Math.pow(1.2, this.bossCount - 1));
             this.exp += expGain;
             
             let healPercent = Math.max(0.10, 0.30 - (this.bossCount - 1) * 0.05);
@@ -861,8 +974,6 @@ class Game {
                 this.p1.hp = Math.min(this.p1.maxHp, this.p1.hp + this.p1.maxHp * healPercent);
                 this.updateHPBar(this.p1);
             }
-            
-            if (Math.random() < 0.5) this.spawnItemClassic(e.x, e.y);
         } else {
             this.kills++; 
             this.exp += e.exp; 
@@ -977,14 +1088,16 @@ class Game {
         if (this.state === 'GAMEOVER') return; this.state = 'GAMEOVER'; 
         audioAPI.playExplosion(); audioAPI.stopEngine(); audioAPI.stopBGM();
         
+        const dict = i18nConfig[currentLang] || i18nConfig['zh'];
+        
         if (this.isRogue) {
             if (this.p1 && !this.p1.dead) { this.p1.dead = true; this.p1.el.remove(); this.createExplosion(this.p1.x, this.p1.y); }
             if (this.kills > this.highScoreRogue) { this.highScoreRogue = this.kills; try { localStorage.setItem('rogue_tank_score', this.highScoreRogue); } catch(e){} }
-            setTimeout(() => this.showOverlay("GAME OVER", `SURVIVED: ${this.kills} KILLS`), 1500);
+            setTimeout(() => this.showOverlay(dict.gameOver, `SURVIVED: ${this.kills} KILLS`), 1500);
         } else {
             if(this.base && !this.base.destroyed) { this.base.destroyed = true; this.base.el.classList.add('destroyed'); }
             if (this.score > this.highScoreClassic) { this.highScoreClassic = this.score; try { localStorage.setItem('tank_highscore', this.highScoreClassic); } catch(e){} }
-            const dict = i18nConfig[currentLang] || i18nConfig['zh']; setTimeout => this.showOverlay(dict.gameOver, `${dict.score}: ${this.score}`), 1500;
+            setTimeout(() => this.showOverlay(dict.gameOver, `${dict.score}: ${this.score}`), 1500);
         }
     }
 
